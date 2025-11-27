@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Route Map - Lok Yatra</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body, html { 
+            margin: 0; 
+            padding: 0; 
+            height: 100%; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
+            overflow: hidden; 
+        }
+        
+        #app-container { 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh; 
+        }
+
+        #main-content { 
+            display: flex; 
+            flex-grow: 1; 
+            position: relative; 
+        }
+
+        #map { 
+            flex-grow: 1; 
+            z-index: 5; 
+        }
+
+        /* --- Sidebar / Route List Panel (Desktop First) --- */
+        #route-list-panel {
+            width: 320px;
+            background: white;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            border-right: 1px solid #ddd;
+        }
+        .panel-header { 
+            padding: 15px; 
+            border-bottom: 1px solid #eee; 
+        }
+        .panel-header h2 { 
+            margin: 0; 
+            font-size: 1.2em; 
+        }
+        .panel-header button { 
+            width: 100%; 
+            padding: 8px; 
+            margin-top: 10px; 
+            font-weight: bold; 
+            background-color: #f0f2f5; 
+            color: #333; 
+            border: 1px solid #ddd; 
+            border-radius: 5px; 
+            cursor: pointer; 
+        }
+        .route-list { 
+            list-style: none; 
+            padding: 0; 
+            margin: 0; 
+            overflow-y: auto; 
+            flex-grow: 1; 
+        }
+        .route-list-item { 
+            padding: 15px; 
+            cursor: pointer; 
+            border-bottom: 1px solid #eee; 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+        }
+        .route-list-item:hover { 
+            background-color: #f7f7f7; 
+        }
+        .route-list-item.selected { 
+            background-color: #e2effa; 
+        }
+        .route-color-dot { 
+            width: 12px; 
+            height: 12px; 
+            border-radius: 50%; 
+            flex-shrink: 0; 
+        }
+        
+        /* --- Mobile Toggle Button (Hidden on Desktop) --- */
+        #mobile-toggle-btn { 
+            display: none; 
+        }
+
+        /* --- MOBILE RESPONSIVE STYLES (Screen width 768px or less) --- */
+        @media (max-width: 768px) {
+            #route-list-panel {
+                position: absolute;
+                top: 0;
+                right: 0; 
+                height: 100%;
+                box-shadow: -3px 0 10px rgba(0,0,0,0.1);
+                transform: translateX(100%);
+                transition: transform 0.3s ease-in-out;
+                border-right: none;
+                border-left: 1px solid #ddd;
+            }
+            #route-list-panel.open {
+                transform: translateX(0);
+            }
+            #mobile-toggle-btn {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                position: absolute;
+                top: 15px;
+                right: 15px;
+                left: auto;
+                z-index: 20;
+                width: 40px;
+                height: 40px;
+                background-color: white;
+                border: none;
+                border-radius: 50%;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+                font-size: 24px;
+                line-height: 40px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app-container">
+        <div id="navbar-placeholder"></div>
+        <main id="main-content">
+            <div id="route-list-panel">
+                <div class="panel-header">
+                    <h2>All Routes</h2>
+                    <button id="show-all-btn">Show Full Network</button>
+                </div>
+                <ul id="route-list" class="route-list"></ul>
+            </div>
+            <button id="mobile-toggle-btn">&#9776;</button>
+            <div id="map"></div>
+        </main>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script type="module">
+        import { loadNavbar } from '/navbar.js';
+
+        // --- State ---
+        let allRoutes = [];
+        let map, allRoutesLayer, highlightedRouteLayer;
+
+        // --- DOM Elements ---
+        const routeListUl = document.getElementById('route-list');
+        const showAllBtn = document.getElementById('show-all-btn');
+        const mobileToggleBtn = document.getElementById('mobile-toggle-btn');
+        const routeListPanel = document.getElementById('route-list-panel');
+        const mapElement = document.getElementById('map');
+
+        // --- Constants ---
+        const ROUTE_COLORS = ['#3388ff', '#e33f3f', '#49cc54', '#e8871a', '#8e44ad', '#1abc9c'];
+        function getRouteColor(index) { return ROUTE_COLORS[index % ROUTE_COLORS.length]; }
+
+        // --- Initialization ---
+        async function initializePage() {
+            loadNavbar('navbar-placeholder');
+            initializeMap();
+            setupEventListeners();
+            
+            try {
+                const response = await fetch('/api/routes');
+                allRoutes = await response.json();
+                populateRouteList(allRoutes);
+                drawAllRoutes();
+            } catch (error) {
+                console.error("Failed to load routes:", error);
+                routeListUl.innerHTML = '<li>Error loading routes.</li>';
+            }
+        }
+
+        function initializeMap() {
+            map = L.map('map').setView([20.5937, 78.9629], 5);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+            allRoutesLayer = new L.FeatureGroup().addTo(map);
+            highlightedRouteLayer = new L.FeatureGroup().addTo(map);
+        }
+
+        // --- UI & Map Logic ---
+        function populateRouteList(routes) {
+            routeListUl.innerHTML = '';
+            routes.forEach((route, index) => {
+                const li = document.createElement('li');
+                li.className = 'route-list-item';
+                li.dataset.id = route.id;
+                li.innerHTML = `<span class="route-color-dot" style="background-color: ${getRouteColor(index)}"></span> <span>${route.name}</span>`;
+                routeListUl.appendChild(li);
+            });
+        }
+        
+        function drawAllRoutes() {
+            allRoutesLayer.clearLayers();
+            highlightedRouteLayer.clearLayers();
+            allRoutes.forEach((route, index) => {
+                L.polyline(route.polyline, { color: getRouteColor(index), weight: 4, opacity: 0.7 }).addTo(allRoutesLayer);
+            });
+            if (allRoutes.length > 0) {
+                map.fitBounds(allRoutesLayer.getBounds().pad(0.1));
+            }
+        }
+
+        function highlightRoute(routeId) {
+            const route = allRoutes.find(r => r.id === routeId);
+            if (!route) return;
+            
+            highlightedRouteLayer.clearLayers();
+            allRoutesLayer.setStyle({ opacity: 0.2 });
+            
+            const polyline = L.polyline(route.polyline, { color: '#ff00ff', weight: 7 }).addTo(highlightedRouteLayer);
+            route.stops.forEach(stop => {
+                L.marker([stop.lat, stop.lng]).bindPopup(stop.name).addTo(highlightedRouteLayer);
+            });
+            map.fitBounds(polyline.getBounds().pad(0.1));
+        }
+        
+        // --- Event Listeners ---
+        function setupEventListeners() {
+            routeListUl.addEventListener('click', (e) => {
+                const item = e.target.closest('.route-list-item');
+                if (!item) return;
+
+                document.querySelectorAll('.route-list-item').forEach(el => el.classList.remove('selected'));
+                item.classList.add('selected');
+
+                highlightRoute(item.dataset.id);
+                
+                if (window.innerWidth <= 768) {
+                    routeListPanel.classList.remove('open');
+                }
+            });
+
+            showAllBtn.addEventListener('click', () => {
+                document.querySelectorAll('.route-list-item').forEach(el => el.classList.remove('selected'));
+                allRoutesLayer.setStyle({ opacity: 0.7 });
+                drawAllRoutes();
+            });
+
+            mobileToggleBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                routeListPanel.classList.toggle('open');
+            });
+
+            mapElement.addEventListener('click', () => {
+                if (window.innerWidth <= 768 && routeListPanel.classList.contains('open')) {
+                    routeListPanel.classList.remove('open');
+                }
+            });
+        }
+
+        // --- Run on page load ---
+        document.addEventListener('DOMContentLoaded', initializePage);
+    </script>
+</body>
+</html>

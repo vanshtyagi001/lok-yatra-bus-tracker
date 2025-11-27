@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emergency SOS - Lok Yatra</title>
+    <style>
+        body, html { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #fbeee6; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            min-height: calc(100vh - 60px); /* Adjust for navbar height */
+            padding: 20px;
+        }
+
+        h1 { color: #c0392b; margin-bottom: 20px; }
+        #status { font-size: 1.1em; color: #555; min-height: 2em; }
+
+        #sos-button-container {
+            margin: 30px 0;
+        }
+
+        #sos-button {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            border: 5px solid #e74c3c;
+            background-color: #c0392b;
+            color: white;
+            font-size: 2.5em;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            transition: transform 0.1s, background-color 0.1s;
+        }
+        #sos-button.active {
+            transform: scale(0.95);
+            background-color: #e74c3c;
+        }
+        #sos-button:disabled {
+            background-color: #7f8c8d;
+            border-color: #95a5a6;
+            cursor: not-allowed;
+        }
+
+        #results.hidden { display: none; }
+        #results {
+            margin-top: 30px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 500px;
+        }
+        #action-links {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .action-link {
+            display: block;
+            padding: 15px;
+            background-color: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .action-link.call {
+            background-color: #27ae60;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar placeholder -->
+    <div id="navbar-placeholder"></div>
+
+    <div class="container">
+        <h1>Lok Yatra Emergency SOS</h1>
+        <div id="sos-button-container">
+            <button id="sos-button">SOS</button>
+        </div>
+        <p id="status">Press and hold the button for 3 seconds to activate</p>
+
+        <div id="results" class="hidden">
+            <h2>SOS Activated!</h2>
+            <p>Your location has been identified. Use the links below to get help:</p>
+            <div id="action-links"></div>
+        </div>
+    </div>
+
+    <!-- Use type="module" to allow imports -->
+    <script type="module">
+        import { loadNavbar } from '/navbar.js';
+        
+        // --- State Variables ---
+        const ADMIN_PHONE_NUMBER = "+919835077194"; // The fixed admin number
+        let userEmergencyContact = null; // To be fetched from the database
+        let pressTimer;
+        let sosActivated = false;
+
+        // --- DOM Elements ---
+        const sosButton = document.getElementById('sos-button');
+        const statusDiv = document.getElementById('status');
+        const resultsDiv = document.getElementById('results');
+        const actionLinksDiv = document.getElementById('action-links');
+
+        // --- Main Initialization ---
+        async function initializePage() {
+            loadNavbar('navbar-placeholder'); // Load our reusable navbar
+
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                // Secure the page
+                window.location.href = '/login.html';
+                return;
+            }
+
+            try {
+                // Fetch user profile to get their emergency contact
+                const response = await fetch('/api/user/profile', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) throw new Error('Could not fetch user profile.');
+                
+                const user = await response.json();
+                if (user.emergencyContact && user.emergencyContact.phone) {
+                    userEmergencyContact = user.emergencyContact.phone;
+                    console.log('User emergency contact loaded:', userEmergencyContact);
+                }
+            } catch (error) {
+                console.error(error);
+                statusDiv.textContent = 'Could not load your profile data.';
+            }
+
+            // Setup button listeners
+            sosButton.addEventListener('mousedown', startPress);
+            sosButton.addEventListener('touchstart', startPress);
+            sosButton.addEventListener('mouseup', cancelPress);
+            sosButton.addEventListener('touchend', cancelPress);
+            sosButton.addEventListener('mouseleave', cancelPress);
+        }
+
+        // --- SOS Logic ---
+        function startPress(event) {
+            if (sosActivated) return;
+            event.preventDefault();
+            sosButton.classList.add('active');
+            statusDiv.textContent = "Keep holding...";
+            pressTimer = setTimeout(activateSOS, 3000);
+        }
+
+        function cancelPress() {
+            if (sosActivated) return;
+            clearTimeout(pressTimer);
+            sosButton.classList.remove('active');
+            statusDiv.textContent = "Press and hold the button for 3 seconds to activate";
+        }
+
+        function activateSOS() {
+            sosActivated = true;
+            sosButton.disabled = true;
+            sosButton.classList.remove('active');
+            statusDiv.textContent = "SOS Activated! Getting your location...";
+
+            if (!navigator.geolocation) {
+                statusDiv.textContent = "Geolocation is not supported by your browser.";
+            } else {
+                navigator.geolocation.getCurrentPosition(locationSuccess, locationError);
+            }
+        }
+
+        function locationSuccess(position) {
+            const { latitude, longitude } = position.coords;
+            statusDiv.textContent = `Location found! Preparing action links.`;
+            resultsDiv.classList.remove('hidden');
+            
+            const mapLink = `http://maps.google.com/maps?q=${latitude},${longitude}`;
+            const emergencyMessage = `EMERGENCY! I need help. My current location is: ${mapLink}`;
+
+            // --- DYNAMICALLY CREATE CONTACT LIST ---
+            const contactsToSend = [ADMIN_PHONE_NUMBER]; // Start with the admin number
+            if (userEmergencyContact) {
+                contactsToSend.push(userEmergencyContact); // Add the user's contact if it exists
+            }
+
+            actionLinksDiv.innerHTML = ''; // Clear previous links
+            contactsToSend.forEach(contact => {
+                const smsLink = document.createElement('a');
+                smsLink.href = `sms:${contact}?body=${encodeURIComponent(emergencyMessage)}`;
+                const contactName = contact === ADMIN_PHONE_NUMBER ? 'Admin' : 'Your Emergency Contact';
+                smsLink.textContent = `Send SMS to ${contactName}`;
+                smsLink.className = 'action-link';
+                actionLinksDiv.appendChild(smsLink);
+            });
+
+            // Add the universal emergency call button
+            const callLink = document.createElement('a');
+            callLink.href = `tel:112`;
+            callLink.textContent = `Call Emergency Services (112)`;
+            callLink.className = 'action-link call';
+            actionLinksDiv.appendChild(callLink);
+        }
+
+        function locationError() {
+            statusDiv.textContent = "Unable to retrieve your location. Check settings.";
+        }
+
+        // --- Run on page load ---
+        document.addEventListener('DOMContentLoaded', initializePage);
+    </script>
+</body>
+</html>

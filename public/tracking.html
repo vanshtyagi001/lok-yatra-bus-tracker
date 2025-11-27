@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Tracking - Lok Yatra</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        /* All navbar-specific CSS is now GONE from this file. */
+
+        /* --- Basic Reset & Global Styles --- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body,
+        html {
+            height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f0f2f5;
+        }
+
+        .view {
+            height: 100%;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- Professional Tracking Page Styles --- */
+        .tracking-container {
+            max-width: 800px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 20px;
+            flex-grow: 1;
+            /* Allows container to grow */
+            overflow-y: auto;
+            /* Adds scroll if content is too long */
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            margin-bottom: 20px;
+        }
+
+        #back-to-search-btn {
+            width: auto;
+            padding: 10px 20px;
+            font-weight: bold;
+            background-color: #f0f2f5;
+            color: #333;
+            border: 1px solid #ddd;
+            margin-bottom: 20px;
+            cursor: pointer;
+        }
+
+        .trip-details-card .trip-endpoints {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            text-align: center;
+        }
+
+        .trip-details-card .endpoint h2 {
+            font-size: 1.3em;
+            color: #2c3e50;
+            margin: 5px 0;
+        }
+
+        .trip-details-card .endpoint p {
+            font-size: 0.8em;
+            color: #7f8c8d;
+            text-transform: uppercase;
+        }
+
+        .trip-details-card .arrow {
+            font-size: 2em;
+            color: #bdc3c7;
+            padding: 0 20px;
+        }
+
+        .route-name-display {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 0.9em;
+            color: #7f8c8d;
+        }
+
+        #map {
+            height: 45vh;
+            border-radius: 8px;
+        }
+
+        .live-bus-list ul {
+            list-style: none;
+        }
+
+        .live-bus-list li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .live-bus-list li:last-child {
+            border-bottom: none;
+        }
+
+        .live-bus-list .eta {
+            font-weight: bold;
+            color: #27ae60;
+            background-color: #e8f8f1;
+            padding: 5px 10px;
+            border-radius: 15px;
+        }
+
+        /* --- Loading Overlay Style --- */
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- The navbar placeholder is now at the top -->
+    <div id="navbar-placeholder"></div>
+
+    <!-- The Loading Overlay is still here -->
+    <div id="loading-overlay">
+        <p>Loading Trip Details...</p>
+    </div>
+
+    <!-- The main content starts hidden and is shown after loading -->
+    <div id="tracking-view" class="view" style="visibility: hidden;">
+        <div class="tracking-container">
+            <button id="back-to-search-btn">&larr; New Search</button>
+            <div class="card trip-details-card">
+                <div class="trip-endpoints">
+                    <div class="endpoint from">
+                        <p>FROM</p>
+                        <h2 id="trip-from-stop"></h2>
+                    </div>
+                    <div class="arrow">&rarr;</div>
+                    <div class="endpoint to">
+                        <p>TO</p>
+                        <h2 id="trip-to-stop"></h2>
+                    </div>
+                </div>
+                <p class="route-name-display">via: <strong id="tracking-route-name"></strong></p>
+            </div>
+            <div class="card map-card">
+                <div id="map"></div>
+            </div>
+            <div class="card live-bus-list">
+                <h3>Live Buses</h3>
+                <ul id="live-bus-list">
+                    <li>Loading...</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script
+        src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-rotatedmarker/0.2.0/leaflet.rotatedMarker.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+
+    <!-- Use type="module" for the main script -->
+    <script type="module">
+        // Import the reusable navbar loader
+        import { loadNavbar } from '/navbar.js';
+
+        // --- State ---
+        let map, busMarkers = {}, etaRequestInterval;
+
+        // --- DOM Elements ---
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const trackingView = document.getElementById('tracking-view');
+        const backToSearchBtn = document.getElementById('back-to-search-btn');
+        const tripFromStop = document.getElementById('trip-from-stop');
+        const tripToStop = document.getElementById('trip-to-stop');
+        const trackingRouteName = document.getElementById('tracking-route-name');
+        const liveBusList = document.getElementById('live-bus-list');
+
+        // --- Custom Bus Icon ---
+        const busIcon = L.icon({
+            iconUrl: '/images/bus.png',
+            iconSize: [35, 35],
+            iconAnchor: [17, 17],
+        });
+
+        // --- Main Initialization Function ---
+        async function initializePage() {
+            const params = new URLSearchParams(window.location.search);
+            const routeId = params.get('routeId');
+            const fromStopName = params.get('from');
+            const toStopName = params.get('to');
+
+            if (!routeId || !fromStopName || !toStopName) {
+                loadingOverlay.innerHTML = '<h1>Error: Missing trip info. Please start a new search.</h1>';
+                return;
+            }
+
+            tripFromStop.textContent = decodeURIComponent(fromStopName);
+            tripToStop.textContent = decodeURIComponent(toStopName);
+
+            try {
+                const response = await fetch(`/api/route/${routeId}`);
+                if (!response.ok) throw new Error('Route not found.');
+                const route = await response.json();
+
+                trackingRouteName.textContent = route.name;
+
+                map = L.map('map').setView([20.5937, 78.9629], 5);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+                const routeLine = L.polyline(route.polyline, { color: 'blue' }).addTo(map);
+                route.stops.forEach(s => L.marker([s.lat, s.lng]).bindPopup(s.name).addTo(map));
+                setTimeout(() => map.fitBounds(routeLine.getBounds().pad(0.1)), 100);
+
+                const socket = io();
+                socket.emit('subscribeToRoute', route.id);
+
+                socket.on('initialBusLocations', (buses) => buses.forEach(b => updateBusMarker(b)));
+                socket.on('locationUpdate', (busData) => updateBusMarker(busData));
+                socket.on('etasUpdated', (etas) => {
+                    updateLiveBusList(etas);
+                    etas.forEach(eta => {
+                        if (busMarkers[eta.busId]) busMarkers[eta.busId].setPopupContent(`<b>Bus ID: ${eta.busId}</b><br>ETA: <strong>${eta.minutes} min</strong>`);
+                    });
+                });
+
+                socket.emit('requestETAs', { routeId: route.id, stopName: decodeURIComponent(fromStopName) });
+                etaRequestInterval = setInterval(() => {
+                    socket.emit('requestETAs', { routeId: route.id, stopName: decodeURIComponent(fromStopName) });
+                }, 15000);
+
+                loadingOverlay.style.display = 'none';
+                trackingView.style.visibility = 'visible';
+
+            } catch (error) {
+                loadingOverlay.innerHTML = `<h1>Error: ${error.message}</h1>`;
+            }
+        }
+
+        // --- Helper Functions ---
+        function updateBusMarker(busData) { const position = [busData.lat, busData.lng]; if (busMarkers[busData.busId]) { busMarkers[busData.busId].setLatLng(position); if (busData.heading !== null) { busMarkers[busData.busId].setRotationAngle(busData.heading); } } else { busMarkers[busData.busId] = L.marker(position, { icon: busIcon, rotationAngle: busData.heading || 0 }).addTo(map).bindPopup(`<b>Bus ID: ${busData.busId}</b><br>Calculating ETA...`); } }
+        function updateLiveBusList(etas) { liveBusList.innerHTML = ""; if (etas.length === 0) { liveBusList.innerHTML = '<li>No active buses found heading towards you.</li>'; return; } etas.sort((a, b) => a.minutes - b.minutes); etas.forEach(eta => { const li = document.createElement('li'); li.innerHTML = `<span><strong>${eta.busId}</strong></span><span class="eta">${eta.minutes} min</span>`; liveBusList.appendChild(li); }); }
+
+        // --- Event Listeners ---
+        backToSearchBtn.addEventListener('click', () => { window.location.href = '/homepage.html'; });
+
+        // --- Run on page load ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Load the navbar first
+            loadNavbar('navbar-placeholder');
+            // Then initialize the rest of the page
+            initializePage();
+        });
+    </script>
+</body>
+
+</html>

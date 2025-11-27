@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff Dashboard</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { font-family: sans-serif; margin: 0; padding: 0; }
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background-color: #2c3e50; color: white; }
+        .header h1 { margin: 0; font-size: 1.2em; }
+        .header button { background-color: #e74c3c; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; }
+        .main-content { text-align: center; padding: 20px; }
+        #status { font-size: 1.2em; font-weight: bold; margin-bottom: 15px; }
+        .success { color: green; } .error { color: red; } .warning { color: orange; }
+        
+        /* The tracking UI elements are all hidden by default */
+        #live-coords, #map-container { display: none; }
+        #live-coords { padding: 10px; background-color: #f4f4f4; max-width: 600px; margin: 0 auto 15px auto; border-radius: 5px; border: 1px solid #ddd; font-family: monospace; font-size: 1.1em; }
+        #map { height: 40vh; width: 100%; max-width: 600px; margin: 0 auto; border-top: 2px solid #ccc; }
+
+        /* Style for the new "Start" button */
+        #start-tracking-btn {
+            display: none; /* Hidden by default */
+            padding: 15px 30px;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: white;
+            background-color: #27ae60; /* Green */
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1 id="welcome-message">Loading...</h1>
+        <button id="logout-btn">Logout</button>
+    </div>
+    <div class="main-content">
+        <p id="status">Authenticating...</p>
+
+        <!-- The new "Start" button goes here -->
+        <button id="start-tracking-btn"></button>
+
+        <!-- The tracking UI goes here -->
+        <div id="live-coords"></div>
+        <div id="map-container"><div id="map"></div></div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const welcomeMessage = document.getElementById('welcome-message');
+        const statusElement = document.getElementById('status');
+        const startTrackingBtn = document.getElementById('start-tracking-btn');
+        const liveCoords = document.getElementById('live-coords');
+        const mapContainer = document.getElementById('map-container');
+        const logoutBtn = document.getElementById('logout-btn');
+
+        async function initializeDashboard() {
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                window.location.href = '/login.html';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/staff/me', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) throw new Error('Authentication failed.');
+
+                const data = await response.json();
+                const { staff, assignedBus } = data;
+
+                welcomeMessage.textContent = `Welcome, ${staff.name}!`;
+
+                if (assignedBus) {
+                    // STEP 1: Show the assignment and the "Start" button
+                    statusElement.textContent = `You are assigned to Bus: ${assignedBus.busNumber}`;
+                    startTrackingBtn.textContent = `Start Live Tracking for ${assignedBus.busNumber}`;
+                    startTrackingBtn.style.display = 'block';
+
+                    // STEP 2: Add a listener that waits for the user to click the button
+                    startTrackingBtn.addEventListener('click', () => {
+                        // STEP 3: Hide the button and show the tracking UI
+                        startTrackingBtn.style.display = 'none';
+                        liveCoords.style.display = 'block';
+                        mapContainer.style.display = 'block';
+                        // Finally, start the GPS tracking
+                        startTracking(assignedBus.busNumber);
+                    }, { once: true }); // { once: true } is a safety to prevent multiple clicks
+
+                } else {
+                    statusElement.textContent = 'You are not currently assigned to a bus.';
+                    statusElement.className = 'warning';
+                }
+            } catch (error) {
+                localStorage.removeItem('authToken');
+                window.location.href = '/login.html';
+            }
+        }
+
+        function startTracking(busId) {
+            // This function contains all the GPS and map logic from before.
+            // It is now ONLY called when the user clicks the "Start" button.
+            const ACCURACY_THRESHOLD_METERS = 30;
+            const SMOOTHING_BUFFER_SIZE = 5;
+            const locationBuffer = [];
+            let map = null, busMarker = null;
+
+            const socket = io();
+            navigator.geolocation.watchPosition((position) => {
+                if (position.coords.accuracy > ACCURACY_THRESHOLD_METERS) {
+                    statusElement.textContent = `Waiting for a more accurate GPS signal...`;
+                    statusElement.className = 'warning';
+                    return;
+                }
+                locationBuffer.push(position.coords);
+                if (locationBuffer.length > SMOOTHING_BUFFER_SIZE) locationBuffer.shift();
+                
+                let avgLat = 0, avgLng = 0;
+                locationBuffer.forEach(p => { avgLat += p.latitude; avgLng += p.longitude; });
+                const latitude = avgLat / locationBuffer.length;
+                const longitude = avgLng / locationBuffer.length;
+                
+                socket.emit('updateLocation', { busId, lat: latitude, lng: longitude, heading: position.coords.heading });
+                
+                statusElement.textContent = `Tracking Active for Bus ${busId}`;
+                statusElement.className = 'success';
+                liveCoords.innerHTML = `Lat: ${latitude.toFixed(6)} <br> Lng: ${longitude.toFixed(6)}`;
+
+                const currentLatLng = [latitude, longitude];
+                if (!map) {
+                    map = L.map('map').setView(currentLatLng, 16);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+                    busMarker = L.marker(currentLatLng).addTo(map).bindPopup(`<b>Bus ${busId}</b>`).openPopup();
+                } else {
+                    busMarker.setLatLng(currentLatLng);
+                    map.panTo(currentLatLng);
+                }
+            }, (error) => {
+                statusElement.textContent = `Error: ${error.message}`;
+                statusElement.className = 'error';
+            }, { enableHighAccuracy: true });
+        }
+
+        logoutBtn.addEventListener('click', () => {
+            localStorage.removeItem('authToken');
+            window.location.href = '/login.html';
+        });
+
+        initializeDashboard();
+    </script>
+</body>
+</html>

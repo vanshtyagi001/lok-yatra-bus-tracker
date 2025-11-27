@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile - Lok Yatra</title>
+    <style>
+        body,
+        html {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 0;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        /* The navbar styles will be injected by navbar.js, but we keep this as a fallback */
+        .navbar {
+            background-color: white;
+            padding: 10px 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 30px auto;
+            padding: 20px;
+        }
+
+        .card {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            margin-bottom: 25px;
+            color: #333;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            /* Two columns */
+            gap: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        /* Span across both columns */
+
+        label {
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 12px;
+            font-size: 1em;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: white;
+            background-color: #3498db;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        .message {
+            padding: 10px;
+            margin-top: 20px;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .message.success {
+            background-color: #e8f8f1;
+            color: #27ae60;
+        }
+
+        .message.error {
+            background-color: #fbeee6;
+            color: #e74c3c;
+        }
+
+        /* Responsive adjustments for mobile */
+        @media (max-width: 600px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            /* Stack columns on mobile */
+            .container {
+                padding: 10px;
+            }
+
+            .card {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- The navbar will be loaded into this placeholder -->
+    <div id="navbar-placeholder"></div>
+
+    <div class="container">
+        <div class="card">
+            <h1>My Profile</h1>
+            <form id="profile-form">
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label for="name">Full Name</label>
+                        <input type="text" id="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="phoneNumber">Phone Number</label>
+                        <input type="tel" id="phoneNumber" disabled style="background-color: #eee;">
+                        <!-- Disabled and styled so it can't be changed -->
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email Address (Optional)</label>
+                        <input type="email" id="email">
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="address">Address (Optional)</label>
+                        <input type="text" id="address">
+                    </div>
+                    <div class="form-group">
+                        <label for="emergencyContactName">Emergency Contact Name</label>
+                        <input type="text" id="emergencyContactName">
+                    </div>
+                    <div class="form-group">
+                        <label for="emergencyContactPhone">Emergency Contact Phone</label>
+                        <input type="tel" id="emergencyContactPhone">
+                    </div>
+                    <div class="form-group">
+                        <label for="dob">Date of Birth</label>
+                        <input type="date" id="dob">
+                    </div>
+                    <div class="form-group">
+                        <label for="gender">Gender</label>
+                        <select id="gender">
+                            <option value="">Select...</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                            <option value="Prefer not to say">Prefer not to say</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit">Update Profile</button>
+            </form>
+            <div id="message-container"></div>
+        </div>
+    </div>
+
+    <!-- Use type="module" to allow imports -->
+    <script type="module">
+        import { loadNavbar } from '/navbar.js';
+
+        // --- DOM Elements ---
+        const profileForm = document.getElementById('profile-form');
+        const messageContainer = document.getElementById('message-container');
+        const nameInput = document.getElementById('name');
+        const phoneInput = document.getElementById('phoneNumber');
+        const emailInput = document.getElementById('email');
+        const addressInput = document.getElementById('address');
+        const ecNameInput = document.getElementById('emergencyContactName');
+        const ecPhoneInput = document.getElementById('emergencyContactPhone');
+        const dobInput = document.getElementById('dob');
+        const genderInput = document.getElementById('gender');
+
+        // --- Main Initialization Function ---
+        async function initializeProfilePage() {
+            const token = localStorage.getItem('authToken');
+
+            if (!token) {
+                window.location.href = '/'; // Redirect to login page
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/user/profile', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Could not fetch profile. Please log in again.');
+                }
+
+                const user = await response.json();
+                populateForm(user);
+
+            } catch (error) {
+                localStorage.removeItem('authToken');
+                window.location.href = '/'; // Redirect to login page on error
+            }
+        }
+
+        function populateForm(user) {
+            nameInput.value = user.name || '';
+            phoneInput.value = user.phoneNumber || '';
+            emailInput.value = user.email || '';
+            addressInput.value = user.address || '';
+            ecNameInput.value = user.emergencyContact?.name || '';
+            ecPhoneInput.value = user.emergencyContact?.phone || '';
+            dobInput.value = user.dob ? new Date(user.dob).toISOString().split('T')[0] : '';
+            genderInput.value = user.gender || '';
+        }
+
+        // --- Form Submission Handler ---
+        profileForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            messageContainer.innerHTML = '';
+            const token = localStorage.getItem('authToken');
+
+            const updatedData = {
+                name: nameInput.value,
+                email: emailInput.value,
+                address: addressInput.value,
+                emergencyContact: {
+                    name: ecNameInput.value,
+                    phone: ecPhoneInput.value
+                },
+                dob: dobInput.value,
+                gender: genderInput.value
+            };
+
+            try {
+                const response = await fetch('/api/user/profile', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify(updatedData)
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || 'Update failed.');
+
+                showMessage(data.message, 'success');
+
+            } catch (error) {
+                showMessage(error.message, 'error');
+            }
+        });
+
+        function showMessage(text, type) {
+            messageContainer.innerHTML = `<div class="message ${type}">${text}</div>`;
+        }
+
+        // --- Run on page load ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadNavbar('navbar-placeholder');
+            initializeProfilePage();
+        });
+    </script>
+</body>
+
+</html>
