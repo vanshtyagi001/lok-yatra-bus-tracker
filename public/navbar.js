@@ -14,7 +14,7 @@ async function loadNavbar(placeholderId) {
 
         // 2. Add the navbar's CSS to the page's head
         addNavbarStyles();
-        
+
         // 3. Run the logic to set up the links (login vs. profile)
         setupDynamicLinks();
 
@@ -30,6 +30,9 @@ function addNavbarStyles() {
     // This CSS is a complete overhaul for responsiveness
     const styles = `
         /* --- Navbar Container --- */
+        body {
+            padding-top: 60px;
+        }
         .navbar {
             background-color: white;
             padding: 10px 20px;
@@ -37,7 +40,10 @@ function addNavbarStyles() {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            position: relative; /* For z-index to work */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
             z-index: 1000;
         }
         .navbar .logo { 
@@ -158,23 +164,23 @@ function setupDynamicLinks() {
 
     const logoLink = document.querySelector('.navbar a.logo-link');
     const token = localStorage.getItem('authToken');
-    
+
     if (token) {
         // --- LOGGED-IN STATE ---
-        logoLink.href = '/homepage.html'; // Logo goes to homepage
+        logoLink.href = '/homepage'; // Logo goes to homepage
 
         navLinksContainer.innerHTML = `
             <div id="profile-icon" title="My Account">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
             </div>
             <div id="profile-dropdown" class="dropdown-menu">
-                <a href="/homepage.html">Home</a>
-                <a href="/profile.html">My Profile</a>
+                <a href="/homepage">Home</a>
+                <a href="/profile">My Profile</a>
                 <div class="dropdown-divider"></div>
                 <a href="#" id="logout-btn">Logout</a>
             </div>
         `;
-        
+
         const profileIcon = document.getElementById('profile-icon');
         const profileDropdown = document.getElementById('profile-dropdown');
 

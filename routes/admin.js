@@ -67,6 +67,37 @@ function setupAdminSocketListeners(socket, io) {
         sendUpdatedData();
     });
 
+    socket.on('updateStaff', async ({ staffId, staffData }) => {
+        try {
+            // Check for uniqueness conflicts before updating
+            const existingUsername = await Staff.findOne({ username: staffData.username, _id: { $ne: staffId } });
+            if (existingUsername) {
+                return socket.emit('staffError', 'Username is already taken by another staff member.');
+            }
+            const existingEmail = await Staff.findOne({ email: staffData.email, _id: { $ne: staffId } });
+            if (existingEmail) {
+                return socket.emit('staffError', 'Email address is already in use by another staff member.');
+            }
+
+            const updateFields = {
+                name: staffData.name,
+                username: staffData.username,
+                email: staffData.email
+            };
+
+            if (staffData.password) {
+                const salt = await bcrypt.genSalt(10);
+                updateFields.password = await bcrypt.hash(staffData.password, salt);
+            }
+
+            await Staff.findByIdAndUpdate(staffId, { $set: updateFields });
+            sendUpdatedData();
+        } catch (error) {
+            console.error("Error updating staff:", error);
+            socket.emit('staffError', 'An error occurred while updating staff details.');
+        }
+    });
+
     // --- Assignment Logic ---
     socket.on('assignStaffToBus', async ({ busId, staffId }) => {
         await Bus.findByIdAndUpdate(busId, { $set: { assignedStaff: staffId || null } });

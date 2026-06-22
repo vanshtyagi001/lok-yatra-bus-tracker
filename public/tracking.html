@@ -4,7 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Tracking - Lok Yatra</title>
+    <title>Live Tracking - Travel Saathi</title>
+    <link rel="icon" type="image/png" href="/images/favicon.png">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         /* All navbar-specific CSS is now GONE from this file. */
@@ -178,9 +179,11 @@
                 </ul>
             </div>
         </div>
+        <div id="footer-placeholder"></div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="/map-boundary.js"></script>
     <script
         src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-rotatedmarker/0.2.0/leaflet.rotatedMarker.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
@@ -189,6 +192,7 @@
     <script type="module">
         // Import the reusable navbar loader
         import { loadNavbar } from '/navbar.js';
+        import { loadFooter } from '/footer.js';
 
         // --- State ---
         let map, busMarkers = {}, etaRequestInterval;
@@ -233,6 +237,9 @@
 
                 map = L.map('map').setView([20.5937, 78.9629], 5);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+                if (window.addIndiaBoundary) {
+                    window.addIndiaBoundary(map);
+                }
                 const routeLine = L.polyline(route.polyline, { color: 'blue' }).addTo(map);
                 route.stops.forEach(s => L.marker([s.lat, s.lng]).bindPopup(s.name).addTo(map));
                 setTimeout(() => map.fitBounds(routeLine.getBounds().pad(0.1)), 100);
@@ -267,12 +274,13 @@
         function updateLiveBusList(etas) { liveBusList.innerHTML = ""; if (etas.length === 0) { liveBusList.innerHTML = '<li>No active buses found heading towards you.</li>'; return; } etas.sort((a, b) => a.minutes - b.minutes); etas.forEach(eta => { const li = document.createElement('li'); li.innerHTML = `<span><strong>${eta.busId}</strong></span><span class="eta">${eta.minutes} min</span>`; liveBusList.appendChild(li); }); }
 
         // --- Event Listeners ---
-        backToSearchBtn.addEventListener('click', () => { window.location.href = '/homepage.html'; });
+        backToSearchBtn.addEventListener('click', () => { window.location.href = '/homepage'; });
 
         // --- Run on page load ---
         document.addEventListener('DOMContentLoaded', () => {
             // Load the navbar first
             loadNavbar('navbar-placeholder');
+            loadFooter('footer-placeholder');
             // Then initialize the rest of the page
             initializePage();
         });

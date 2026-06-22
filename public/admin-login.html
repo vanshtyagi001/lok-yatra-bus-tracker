@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Travel Saathi</title>
+    <title>Admin Login - Travel Saathi</title>
     <link rel="icon" type="image/png" href="/images/favicon.png">
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
         *, *::before, *::after {
             box-sizing: border-box;
@@ -25,7 +27,6 @@
             --color-text-placeholder: #94a3b8;
             --color-accent: #1e293b;
             --color-accent-hover: #0f172a;
-            --color-link: #2563eb;
             --color-error: #dc2626;
             --color-error-bg: #fef2f2;
             --radius-sm: 6px;
@@ -91,7 +92,6 @@
         .left-panel .brand img {
             height: 36px;
             width: auto;
-            /* Invert so logo is visible on dark background */
             filter: brightness(0) invert(1);
             opacity: 0.95;
         }
@@ -128,21 +128,17 @@
             margin-bottom: 28px;
         }
 
-        .left-panel .tag svg {
-            opacity: 0.7;
-        }
-
         .left-panel h1 {
             font-size: 2.5rem;
             font-weight: 700;
             color: #ffffff;
             line-height: 1.2;
             letter-spacing: -0.8px;
-            max-width: 380px;
+            max-width: 420px;
         }
 
         .left-panel h1 span {
-            color: rgba(255,255,255,0.45);
+            color: rgba(255, 255, 255, 0.45);
         }
 
         .left-panel p {
@@ -210,50 +206,9 @@
             line-height: 1.6;
         }
 
-        /* ─── Form Toggle Tabs ───────────────── */
-        .form-tabs {
-            display: flex;
-            gap: 0;
-            background-color: var(--color-bg);
-            border: 1px solid var(--color-border);
-            border-radius: var(--radius-sm);
-            padding: 4px;
-            margin-bottom: 28px;
-        }
-
-        .tab-btn {
-            flex: 1;
-            padding: 8px 16px;
-            border: none;
-            background: transparent;
-            border-radius: 4px;
-            font-size: 0.85rem;
-            font-weight: 500;
-            color: var(--color-text-secondary);
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-family: var(--font);
-            box-shadow: none;
-        }
-
-        .tab-btn.active {
-            background-color: var(--color-surface);
-            color: var(--color-text-primary);
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-
-        /* ─── Form Containers ────────────────── */
-        .form-container {
-            display: none;
-        }
-
-        .form-container.active {
-            display: block;
-        }
-
         /* ─── Input Fields ───────────────────── */
         .input-group {
-            margin-bottom: 16px;
+            margin-bottom: 20px;
         }
 
         label {
@@ -350,6 +305,13 @@
             font-size: 0.85rem;
             color: var(--color-error);
             line-height: 1.5;
+            animation: shake 0.3s ease;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-4px); }
+            75% { transform: translateX(4px); }
         }
 
         #error-message.visible {
@@ -381,7 +343,6 @@
                 background-color: #0f172a;
             }
 
-            /* ── Mobile Hero Banner ── */
             .left-panel {
                 display: flex;
                 flex-direction: column;
@@ -391,17 +352,14 @@
                 height: auto;
             }
 
-            /* Hide the heavy stats row on mobile */
             .left-panel .stats {
                 display: none;
             }
 
-            /* Compact top bar with brand */
             .left-panel .brand {
                 padding: 18px 24px 0;
             }
 
-            /* Hero text section */
             .left-panel .hero-text {
                 padding: 24px 24px 32px;
                 flex-grow: 0;
@@ -423,14 +381,12 @@
                 margin-bottom: 18px;
             }
 
-            /* ── Mobile Form Panel ── */
             .right-panel {
                 padding: 0;
                 justify-content: flex-start;
                 background: transparent;
             }
 
-            /* Card-style form */
             .form-wrapper {
                 max-width: 100%;
                 background-color: var(--color-surface);
@@ -440,7 +396,6 @@
                 min-height: 60vh;
             }
 
-            /* Touch-friendly inputs */
             input {
                 height: 48px;
                 font-size: 1rem;
@@ -450,11 +405,6 @@
                 height: 48px;
                 font-size: 0.95rem;
                 margin-top: 12px;
-            }
-
-            .tab-btn {
-                padding: 10px 16px;
-                font-size: 0.875rem;
             }
 
             .form-header {
@@ -498,25 +448,25 @@
 
         <div class="hero-text">
             <div class="tag">
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                Real-Time Tracking
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                Secure Access
             </div>
-            <h1>Your journey, <span>tracked precisely.</span></h1>
-            <p>Live bus locations, accurate ETAs, and seamless route navigation — all in one place.</p>
+            <h1>Control panel, <span>managed securely.</span></h1>
+            <p>Manage routes, track live buses, register conductors, and audit travel logs in real-time.</p>
         </div>
 
         <div class="stats">
             <div class="stat-item">
-                <span class="stat-num">3+</span>
-                <span class="stat-label">Active Routes</span>
+                <span class="stat-num">Admin</span>
+                <span class="stat-label">Access Mode</span>
             </div>
             <div class="stat-item">
-                <span class="stat-num">Live</span>
-                <span class="stat-label">GPS Updates</span>
+                <span class="stat-num">JWT</span>
+                <span class="stat-label">Encryption</span>
             </div>
             <div class="stat-item">
-                <span class="stat-num">SOS</span>
-                <span class="stat-label">Emergency</span>
+                <span class="stat-num">SSL</span>
+                <span class="stat-label">Session Protection</span>
             </div>
         </div>
     </div>
@@ -526,67 +476,35 @@
         <div class="form-wrapper">
 
             <div class="form-header">
-                <h2>Sign in</h2>
-                <p>Welcome back. Choose how you'd like to continue.</p>
+                <h2>Admin sign in</h2>
+                <p>Welcome back. Please enter the master password to access the panel.</p>
             </div>
 
-            <!-- Tabs -->
-            <div class="form-tabs">
-                <button id="tab-passenger" class="tab-btn active" type="button">Passenger</button>
-                <button id="tab-staff" class="tab-btn" type="button">Staff</button>
-            </div>
-
-            <!-- Passenger Form -->
-            <div id="passenger-form-container" class="form-container active">
-                <form id="passenger-login-form">
-                    <div class="input-group">
-                        <label for="phoneNumber">Phone Number</label>
-                        <div class="input-wrap">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                            <input type="tel" id="phoneNumber" placeholder="10-digit phone number" required pattern="[0-9]{10}">
-                        </div>
+            <!-- Admin Form -->
+            <form id="login-form">
+                <div class="input-group">
+                    <label for="password">Password</label>
+                    <div class="input-wrap">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        <input type="password" id="password" placeholder="••••••••" required>
                     </div>
-                    <button type="submit" class="submit-btn">
-                        Continue
-                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-                    </button>
-                </form>
-            </div>
+                </div>
+                <button type="submit" class="submit-btn">
+                    <span>Sign in</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </button>
+            </form>
 
-            <!-- Staff Form -->
-            <div id="staff-form-container" class="form-container">
-                <form id="staff-login-form">
-                    <div class="input-group">
-                        <label for="username">Username</label>
-                        <div class="input-wrap">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                            <input type="text" id="username" placeholder="Enter your username" required>
-                        </div>
-                    </div>
-                    <div class="input-group">
-                        <label for="password">Password</label>
-                        <div class="input-wrap">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                            <input type="password" id="password" placeholder="Enter your password" required>
-                        </div>
-                    </div>
-                    <button type="submit" class="submit-btn">
-                        Sign in
-                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-                    </button>
-                </form>
-            </div>
-
-            <!-- Error -->
+            <!-- Error Message -->
             <div id="error-message">
-                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                <span id="error-text"></span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <span id="error-text">Incorrect password. Please try again.</span>
             </div>
 
             <!-- Footer -->
             <div class="form-footer">
                 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                Secure sign-in. Your data is protected.
+                Secure sign-in. Your session is encrypted.
             </div>
         </div>
     </div>
@@ -595,84 +513,44 @@
 
 <div id="footer-placeholder"></div>
 
+<script>
+    const loginForm = document.getElementById('login-form');
+    const passwordInput = document.getElementById('password');
+    const errorBox = document.getElementById('error-message');
+    const errorText = document.getElementById('error-text');
+
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        errorBox.classList.remove('visible');
+
+        const password = passwordInput.value;
+
+        try {
+            const response = await fetch('/api/admin/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                window.location.href = '/admin';
+            } else {
+                errorText.textContent = data.message || 'Invalid password. Please try again.';
+                errorBox.classList.add('visible');
+                passwordInput.value = '';
+                passwordInput.focus();
+            }
+        } catch (err) {
+            errorText.textContent = 'Server error. Please try again later.';
+            errorBox.classList.add('visible');
+        }
+    });
+</script>
 <script type="module">
     import { loadFooter } from '/footer.js';
     loadFooter('footer-placeholder');
 </script>
-
-<script>
-    const tabPassenger = document.getElementById('tab-passenger');
-    const tabStaff = document.getElementById('tab-staff');
-    const passengerContainer = document.getElementById('passenger-form-container');
-    const staffContainer = document.getElementById('staff-form-container');
-    const errorBox = document.getElementById('error-message');
-    const errorText = document.getElementById('error-text');
-
-    function showError(msg) {
-        errorText.textContent = msg;
-        errorBox.classList.add('visible');
-    }
-
-    function clearError() {
-        errorBox.classList.remove('visible');
-        errorText.textContent = '';
-    }
-
-    tabPassenger.addEventListener('click', () => {
-        tabPassenger.classList.add('active');
-        tabStaff.classList.remove('active');
-        passengerContainer.classList.add('active');
-        staffContainer.classList.remove('active');
-        clearError();
-    });
-
-    tabStaff.addEventListener('click', () => {
-        tabStaff.classList.add('active');
-        tabPassenger.classList.remove('active');
-        staffContainer.classList.add('active');
-        passengerContainer.classList.remove('active');
-        clearError();
-    });
-
-    document.getElementById('passenger-login-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        clearError();
-        const phoneNumber = document.getElementById('phoneNumber').value;
-        try {
-            const response = await fetch('/api/user/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phoneNumber })
-            });
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.message || 'Login failed.');
-            localStorage.setItem('authToken', data.token);
-            window.location.href = '/homepage';
-        } catch (error) {
-            showError(error.message);
-        }
-    });
-
-    document.getElementById('staff-login-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        clearError();
-        const username = document.getElementById('username').value;
-        const password = document.getElementById('password').value;
-        try {
-            const response = await fetch('/api/staff/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
-            });
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.message || 'Login failed.');
-            localStorage.setItem('authToken', data.token);
-            window.location.href = '/bus';
-        } catch (error) {
-            showError(error.message);
-        }
-    });
-</script>
-
 </body>
 </html>

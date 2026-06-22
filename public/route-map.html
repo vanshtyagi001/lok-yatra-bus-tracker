@@ -3,265 +3,921 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Route Map - Lok Yatra</title>
+    <title>Route Map - Travel Saathi</title>
+    <link rel="icon" type="image/png" href="/images/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        body, html { 
-            margin: 0; 
-            padding: 0; 
-            height: 100%; 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
-            overflow: hidden; 
-        }
-        
-        #app-container { 
-            display: flex; 
-            flex-direction: column; 
-            height: 100vh; 
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
 
-        #main-content { 
-            display: flex; 
-            flex-grow: 1; 
-            position: relative; 
+        :root {
+            --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --color-text: #0f172a;
+            --color-text-secondary: #64748b;
+            --color-border: #e2e8f0;
+            --color-surface: #ffffff;
+            --color-bg: #f8f9fa;
+            --color-accent: #1e293b;
+            --color-live: #16a34a;
+            --color-live-soft: #f0fdf4;
+            --color-live-border: #bbf7d0;
+            --radius: 10px;
         }
 
-        #map { 
-            flex-grow: 1; 
-            z-index: 5; 
+        html, body {
+            height: 100%;
+            font-family: var(--font);
+            color: var(--color-text);
+            -webkit-font-smoothing: antialiased;
+            overflow-y: auto;
         }
 
-        /* --- Sidebar / Route List Panel (Desktop First) --- */
-        #route-list-panel {
-            width: 320px;
-            background: white;
-            z-index: 10;
+        /* ─── App Shell ───────────────────────── */
+        #app-container {
             display: flex;
             flex-direction: column;
-            flex-shrink: 0;
-            border-right: 1px solid #ddd;
-        }
-        .panel-header { 
-            padding: 15px; 
-            border-bottom: 1px solid #eee; 
-        }
-        .panel-header h2 { 
-            margin: 0; 
-            font-size: 1.2em; 
-        }
-        .panel-header button { 
-            width: 100%; 
-            padding: 8px; 
-            margin-top: 10px; 
-            font-weight: bold; 
-            background-color: #f0f2f5; 
-            color: #333; 
-            border: 1px solid #ddd; 
-            border-radius: 5px; 
-            cursor: pointer; 
-        }
-        .route-list { 
-            list-style: none; 
-            padding: 0; 
-            margin: 0; 
-            overflow-y: auto; 
-            flex-grow: 1; 
-        }
-        .route-list-item { 
-            padding: 15px; 
-            cursor: pointer; 
-            border-bottom: 1px solid #eee; 
-            display: flex; 
-            align-items: center; 
-            gap: 10px; 
-        }
-        .route-list-item:hover { 
-            background-color: #f7f7f7; 
-        }
-        .route-list-item.selected { 
-            background-color: #e2effa; 
-        }
-        .route-color-dot { 
-            width: 12px; 
-            height: 12px; 
-            border-radius: 50%; 
-            flex-shrink: 0; 
-        }
-        
-        /* --- Mobile Toggle Button (Hidden on Desktop) --- */
-        #mobile-toggle-btn { 
-            display: none; 
+            min-height: 100%;
         }
 
-        /* --- MOBILE RESPONSIVE STYLES (Screen width 768px or less) --- */
+        #main-content {
+            display: flex;
+            height: calc(100vh - 60px);
+            flex-shrink: 0;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* ─── Sidebar ─────────────────────────── */
+        #route-list-panel {
+            width: 320px;
+            flex-shrink: 0;
+            background: var(--color-surface);
+            border-right: 1px solid var(--color-border);
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+            overflow: hidden;
+        }
+
+        /* Panel Header */
+        .panel-header {
+            padding: 20px 20px 0;
+            flex-shrink: 0;
+        }
+
+        .panel-header-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .panel-header h2 {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--color-text);
+            letter-spacing: -0.2px;
+        }
+
+        .route-count-badge {
+            font-size: 0.73rem;
+            font-weight: 600;
+            color: var(--color-text-secondary);
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            border-radius: 20px;
+            padding: 2px 10px;
+        }
+
+        /* ─── View Mode Tabs ─────────────────── */
+        .view-tabs {
+            display: flex;
+            background: var(--color-bg);
+            border-radius: 8px;
+            padding: 3px;
+            margin-bottom: 14px;
+            border: 1px solid var(--color-border);
+        }
+
+        .view-tab {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            background: transparent;
+            font-family: var(--font);
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--color-text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .view-tab:hover {
+            color: var(--color-text);
+        }
+
+        .view-tab.active {
+            background: var(--color-surface);
+            color: var(--color-text);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+
+        .view-tab.active.live-tab {
+            color: var(--color-live);
+        }
+
+        .live-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--color-live);
+            animation: pulse-live 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse-live {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.8); }
+        }
+
+        /* Show all / Show live button */
+        .panel-action-btn {
+            width: 100%;
+            height: 36px;
+            background: var(--color-accent);
+            color: #fff;
+            border: none;
+            border-radius: 7px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            font-family: var(--font);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            transition: background 0.2s;
+            margin-bottom: 14px;
+        }
+
+        .panel-action-btn:hover {
+            background: #0f172a;
+        }
+
+        .panel-action-btn.live-btn {
+            background: var(--color-live);
+        }
+
+        .panel-action-btn.live-btn:hover {
+            background: #15803d;
+        }
+
+        /* Divider below header */
+        .panel-divider {
+            height: 1px;
+            background: var(--color-border);
+            margin: 0 20px;
+        }
+
+        /* Route list */
+        #route-list {
+            list-style: none;
+            overflow-y: auto;
+            flex-grow: 1;
+            padding: 8px;
+        }
+
+        #route-list::-webkit-scrollbar {
+            width: 4px;
+        }
+        #route-list::-webkit-scrollbar-thumb {
+            background: var(--color-border);
+            border-radius: 4px;
+        }
+
+        .route-list-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 11px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.15s;
+            border: 1.5px solid transparent;
+            margin-bottom: 2px;
+        }
+
+        .route-list-item:hover {
+            background: var(--color-bg);
+        }
+
+        .route-list-item.selected {
+            background: #f1f5f9;
+            border-color: var(--color-border);
+        }
+
+        .route-color-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .route-item-info {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            min-width: 0;
+        }
+
+        .route-item-name {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--color-text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .route-item-stops {
+            font-size: 0.75rem;
+            color: var(--color-text-secondary);
+        }
+
+        .route-item-arrow {
+            margin-left: auto;
+            color: var(--color-border);
+            flex-shrink: 0;
+            transition: color 0.15s;
+        }
+
+        .route-list-item.selected .route-item-arrow,
+        .route-list-item:hover .route-item-arrow {
+            color: var(--color-text-secondary);
+        }
+
+        /* ─── Live badge on route items ─────── */
+        .live-bus-count {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.68rem;
+            font-weight: 600;
+            color: var(--color-live);
+            background: var(--color-live-soft);
+            border: 1px solid var(--color-live-border);
+            border-radius: 12px;
+            padding: 1px 8px;
+            margin-left: auto;
+            flex-shrink: 0;
+        }
+
+        .live-bus-count .mini-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--color-live);
+            animation: pulse-live 1.5s ease-in-out infinite;
+        }
+
+        /* ─── Empty state ────────────────────── */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            text-align: center;
+            color: var(--color-text-secondary);
+            gap: 12px;
+        }
+
+        .empty-state svg {
+            opacity: 0.25;
+        }
+
+        .empty-state p {
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+
+        /* Selected route info strip */
+        #selected-route-info {
+            display: none;
+            padding: 14px 20px;
+            border-top: 1px solid var(--color-border);
+            background: var(--color-bg);
+            flex-shrink: 0;
+        }
+
+        #selected-route-info.visible {
+            display: block;
+        }
+
+        .selected-route-label {
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--color-text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .selected-route-name {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--color-text);
+        }
+
+        .selected-route-meta {
+            font-size: 0.78rem;
+            color: var(--color-text-secondary);
+            margin-top: 2px;
+        }
+
+        /* ─── Map ─────────────────────────────── */
+        #map {
+            flex-grow: 1;
+            z-index: 5;
+        }
+
+        /* Leaflet overrides */
+        .leaflet-popup-content-wrapper {
+            font-family: var(--font) !important;
+            border-radius: 8px !important;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.12) !important;
+        }
+
+        .leaflet-popup-content {
+            font-size: 0.85rem !important;
+            line-height: 1.6 !important;
+        }
+
+        /* Bus popup styling */
+        .bus-popup {
+            text-align: center;
+        }
+        .bus-popup .bus-id {
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: var(--color-text);
+        }
+        .bus-popup .bus-route {
+            font-size: 0.78rem;
+            color: var(--color-text-secondary);
+            margin-top: 2px;
+        }
+        .bus-popup .bus-live-tag {
+            display: inline-block;
+            font-size: 0.68rem;
+            font-weight: 600;
+            color: var(--color-live);
+            background: var(--color-live-soft);
+            border-radius: 4px;
+            padding: 1px 6px;
+            margin-top: 4px;
+        }
+
+        /* ─── Mobile toggle ───────────────────── */
+        #mobile-toggle-btn {
+            display: none;
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            z-index: 20;
+            width: 42px;
+            height: 42px;
+            background: var(--color-surface);
+            border: 1.5px solid var(--color-border);
+            border-radius: 10px;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            color: var(--color-text);
+        }
+
+        /* ─── Responsive ─────────────────────── */
         @media (max-width: 768px) {
             #route-list-panel {
                 position: absolute;
                 top: 0;
-                right: 0; 
+                left: 0;
                 height: 100%;
-                box-shadow: -3px 0 10px rgba(0,0,0,0.1);
-                transform: translateX(100%);
-                transition: transform 0.3s ease-in-out;
+                width: 300px;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
                 border-right: none;
-                border-left: 1px solid #ddd;
+                box-shadow: 4px 0 20px rgba(0,0,0,0.1);
             }
+
             #route-list-panel.open {
                 transform: translateX(0);
             }
+
             #mobile-toggle-btn {
                 display: flex;
-                align-items: center;
-                justify-content: center;
-                position: absolute;
-                top: 15px;
-                right: 15px;
-                left: auto;
-                z-index: 20;
-                width: 40px;
-                height: 40px;
-                background-color: white;
-                border: none;
-                border-radius: 50%;
-                box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-                font-size: 24px;
-                line-height: 40px;
             }
         }
     </style>
 </head>
 <body>
-    <div id="app-container">
-        <div id="navbar-placeholder"></div>
-        <main id="main-content">
-            <div id="route-list-panel">
-                <div class="panel-header">
-                    <h2>All Routes</h2>
-                    <button id="show-all-btn">Show Full Network</button>
+
+<div id="app-container">
+    <div id="navbar-placeholder"></div>
+
+    <main id="main-content">
+
+        <!-- ─── Sidebar ─────────────────────────── -->
+        <div id="route-list-panel">
+            <div class="panel-header">
+                <div class="panel-header-top">
+                    <h2 id="panel-title">All Routes</h2>
+                    <span class="route-count-badge" id="route-count">—</span>
                 </div>
-                <ul id="route-list" class="route-list"></ul>
+
+                <!-- View Mode Tabs -->
+                <div class="view-tabs">
+                    <button class="view-tab active" id="tab-all" title="View all routes">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                        All Routes
+                    </button>
+                    <button class="view-tab" id="tab-live" title="View live routes with active buses">
+                        <span class="live-dot"></span>
+                        Live Routes
+                    </button>
+                </div>
+
+                <button class="panel-action-btn" id="show-all-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                    Show Full Network
+                </button>
             </div>
-            <button id="mobile-toggle-btn">&#9776;</button>
-            <div id="map"></div>
-        </main>
-    </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script type="module">
-        import { loadNavbar } from '/navbar.js';
+            <div class="panel-divider"></div>
 
-        // --- State ---
-        let allRoutes = [];
-        let map, allRoutesLayer, highlightedRouteLayer;
+            <ul id="route-list"></ul>
 
-        // --- DOM Elements ---
-        const routeListUl = document.getElementById('route-list');
-        const showAllBtn = document.getElementById('show-all-btn');
-        const mobileToggleBtn = document.getElementById('mobile-toggle-btn');
-        const routeListPanel = document.getElementById('route-list-panel');
-        const mapElement = document.getElementById('map');
+            <!-- Selected route info strip -->
+            <div id="selected-route-info">
+                <div class="selected-route-label">Selected Route</div>
+                <div class="selected-route-name" id="sr-name">—</div>
+                <div class="selected-route-meta" id="sr-meta">—</div>
+            </div>
+        </div>
 
-        // --- Constants ---
-        const ROUTE_COLORS = ['#3388ff', '#e33f3f', '#49cc54', '#e8871a', '#8e44ad', '#1abc9c'];
-        function getRouteColor(index) { return ROUTE_COLORS[index % ROUTE_COLORS.length]; }
+        <!-- Mobile toggle -->
+        <button id="mobile-toggle-btn" title="Toggle Routes">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
 
-        // --- Initialization ---
-        async function initializePage() {
-            loadNavbar('navbar-placeholder');
-            initializeMap();
-            setupEventListeners();
-            
-            try {
-                const response = await fetch('/api/routes');
-                allRoutes = await response.json();
-                populateRouteList(allRoutes);
-                drawAllRoutes();
-            } catch (error) {
-                console.error("Failed to load routes:", error);
-                routeListUl.innerHTML = '<li>Error loading routes.</li>';
+        <!-- ─── Map ──────────────────────────── -->
+        <div id="map"></div>
+
+    </main>
+    <div id="footer-placeholder"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/map-boundary.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-rotatedmarker/0.2.0/leaflet.rotatedMarker.min.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script type="module">
+    import { loadNavbar } from '/navbar.js';
+    import { loadFooter } from '/footer.js';
+
+    // ─── State ──────────────────────────────────
+    let allRoutes = [];
+    let map, allRoutesLayer, highlightedRouteLayer, busMarkersLayer;
+    let busMarkers = {};
+    let currentMode = 'all'; // 'all' or 'live'
+    let socket = null;
+
+    // ─── DOM ────────────────────────────────────
+    const routeListUl      = document.getElementById('route-list');
+    const showAllBtn       = document.getElementById('show-all-btn');
+    const mobileToggleBtn  = document.getElementById('mobile-toggle-btn');
+    const routeListPanel   = document.getElementById('route-list-panel');
+    const mapElement       = document.getElementById('map');
+    const routeCountBadge  = document.getElementById('route-count');
+    const selectedInfo     = document.getElementById('selected-route-info');
+    const srName           = document.getElementById('sr-name');
+    const srMeta           = document.getElementById('sr-meta');
+    const panelTitle       = document.getElementById('panel-title');
+    const tabAll           = document.getElementById('tab-all');
+    const tabLive          = document.getElementById('tab-live');
+
+    // ─── Route colours ──────────────────────────
+    const ROUTE_COLORS = ['#1e293b', '#2563eb', '#16a34a', '#dc2626', '#9333ea', '#ea580c'];
+    const getRouteColor = i => ROUTE_COLORS[i % ROUTE_COLORS.length];
+
+    // ─── Bus Icon ───────────────────────────────
+    const busIcon = L.icon({
+        iconUrl: '/images/bus.png',
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+    });
+
+    // ─── Map init ───────────────────────────────
+    function initializeMap() {
+        map = L.map('map', { zoomControl: true }).setView([20.5937, 78.9629], 5);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+        }).addTo(map);
+        if (window.addIndiaBoundary) {
+            window.addIndiaBoundary(map);
+        }
+        allRoutesLayer        = new L.FeatureGroup().addTo(map);
+        highlightedRouteLayer = new L.FeatureGroup().addTo(map);
+        busMarkersLayer       = new L.FeatureGroup().addTo(map);
+    }
+
+    // ══════════════════════════════════════════════
+    //  ALL ROUTES MODE
+    // ══════════════════════════════════════════════
+
+    function populateAllRoutesList(routes) {
+        routeListUl.innerHTML = '';
+        routeCountBadge.textContent = `${routes.length} route${routes.length !== 1 ? 's' : ''}`;
+
+        routes.forEach((route, index) => {
+            const li = document.createElement('li');
+            li.className = 'route-list-item';
+            li.dataset.id = route.id;
+            li.innerHTML = `
+                <span class="route-color-dot" style="background:${getRouteColor(index)}"></span>
+                <div class="route-item-info">
+                    <span class="route-item-name">${route.name}</span>
+                    <span class="route-item-stops">${route.stops.length} stops</span>
+                </div>
+                <span class="route-item-arrow">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                </span>`;
+            routeListUl.appendChild(li);
+        });
+    }
+
+    function drawAllRoutes() {
+        allRoutesLayer.clearLayers();
+        highlightedRouteLayer.clearLayers();
+        busMarkersLayer.clearLayers();
+        busMarkers = {};
+
+        allRoutes.forEach((route, index) => {
+            L.polyline(route.polyline, {
+                color: getRouteColor(index),
+                weight: 4,
+                opacity: 0.75,
+            }).addTo(allRoutesLayer);
+        });
+
+        if (allRoutes.length > 0) {
+            map.fitBounds(allRoutesLayer.getBounds().pad(0.12));
+        }
+    }
+
+    function highlightRoute(routeId) {
+        const idx   = allRoutes.findIndex(r => r.id === routeId);
+        const route = allRoutes[idx];
+        if (!route) return;
+
+        highlightedRouteLayer.clearLayers();
+        busMarkersLayer.clearLayers();
+        busMarkers = {};
+        allRoutesLayer.setStyle({ opacity: 0.12, weight: 3 });
+
+        const color = getRouteColor(idx);
+        const polyline = L.polyline(route.polyline, {
+            color,
+            weight: 6,
+            opacity: 1,
+        }).addTo(highlightedRouteLayer);
+
+        route.stops.forEach(stop => {
+            L.circleMarker([stop.lat, stop.lng], {
+                radius: 6,
+                fillColor: '#fff',
+                color,
+                weight: 2.5,
+                opacity: 1,
+                fillOpacity: 1,
+            }).bindPopup(`<strong>${stop.name}</strong>`).addTo(highlightedRouteLayer);
+        });
+
+        map.fitBounds(polyline.getBounds().pad(0.15));
+
+        srName.textContent = route.name;
+        srMeta.textContent = `${route.stops.length} stops · Click a stop marker for details`;
+        selectedInfo.classList.add('visible');
+    }
+
+    // ══════════════════════════════════════════════
+    //  LIVE ROUTES MODE
+    // ══════════════════════════════════════════════
+
+    function switchToLiveMode() {
+        currentMode = 'live';
+        tabAll.classList.remove('active');
+        tabLive.classList.add('active', 'live-tab');
+        panelTitle.textContent = 'Live Routes';
+        showAllBtn.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Show All Live`;
+        showAllBtn.className = 'panel-action-btn live-btn';
+
+        selectedInfo.classList.remove('visible');
+        allRoutesLayer.clearLayers();
+        highlightedRouteLayer.clearLayers();
+        busMarkersLayer.clearLayers();
+        busMarkers = {};
+
+        // Connect socket for live updates
+        if (!socket) {
+            socket = io();
+        }
+        socket.emit('subscribeToAllBuses');
+
+        socket.on('allBusLocations', (buses) => {
+            renderLiveView(buses);
+        });
+
+        socket.on('globalLocationUpdate', (busData) => {
+            updateBusMarkerOnMap(busData);
+            // Refresh the live routes list periodically (debounced via the route list)
+            refreshLiveListFromMarkers();
+        });
+
+        // Also fetch initial data via REST as a fallback
+        fetchAndRenderLive();
+    }
+
+    async function fetchAndRenderLive() {
+        try {
+            const res = await fetch('/api/buses/active');
+            const buses = await res.json();
+            renderLiveView(buses);
+        } catch (err) {
+            console.error('Failed to fetch active buses:', err);
+        }
+    }
+
+    function renderLiveView(buses) {
+        // Clear old markers
+        busMarkersLayer.clearLayers();
+        busMarkers = {};
+        allRoutesLayer.clearLayers();
+        highlightedRouteLayer.clearLayers();
+
+        // Group buses by routeId
+        const routeBusMap = {};
+        buses.forEach(bus => {
+            if (!routeBusMap[bus.routeId]) routeBusMap[bus.routeId] = [];
+            routeBusMap[bus.routeId].push(bus);
+        });
+
+        // Find matching routes from allRoutes
+        const liveRouteIds = Object.keys(routeBusMap);
+        const liveRoutes = allRoutes.filter(r => liveRouteIds.includes(r.id));
+
+        // Update badge
+        routeCountBadge.textContent = `${liveRoutes.length} active`;
+
+        // Populate list
+        routeListUl.innerHTML = '';
+        if (liveRoutes.length === 0) {
+            routeListUl.innerHTML = `
+                <li class="empty-state">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                    <p>No buses are currently active.<br>Routes will appear here when buses start transmitting.</p>
+                </li>`;
+            return;
+        }
+
+        liveRoutes.forEach((route, index) => {
+            const busCount = routeBusMap[route.id].length;
+            const li = document.createElement('li');
+            li.className = 'route-list-item';
+            li.dataset.id = route.id;
+            li.innerHTML = `
+                <span class="route-color-dot" style="background:${getRouteColor(allRoutes.indexOf(route))}"></span>
+                <div class="route-item-info">
+                    <span class="route-item-name">${route.name}</span>
+                    <span class="route-item-stops">${route.stops.length} stops</span>
+                </div>
+                <span class="live-bus-count">
+                    <span class="mini-dot"></span>
+                    ${busCount} bus${busCount > 1 ? 'es' : ''}
+                </span>`;
+            routeListUl.appendChild(li);
+
+            // Draw this route on map
+            L.polyline(route.polyline, {
+                color: getRouteColor(allRoutes.indexOf(route)),
+                weight: 4,
+                opacity: 0.7,
+            }).addTo(allRoutesLayer);
+        });
+
+        // Place all bus markers
+        buses.forEach(bus => {
+            updateBusMarkerOnMap(bus);
+        });
+
+        // Fit bounds to show all live routes
+        const allLayers = new L.FeatureGroup([allRoutesLayer, busMarkersLayer]);
+        if (allLayers.getBounds().isValid()) {
+            map.fitBounds(allLayers.getBounds().pad(0.12));
+        }
+    }
+
+    function updateBusMarkerOnMap(busData) {
+        const position = [busData.lat, busData.lng];
+        const routeIdx = allRoutes.findIndex(r => r.id === busData.routeId);
+        const routeName = routeIdx >= 0 ? allRoutes[routeIdx].name : busData.routeId;
+
+        const popupContent = `
+            <div class="bus-popup">
+                <div class="bus-id">${busData.busId}</div>
+                <div class="bus-route">${routeName}</div>
+                <div class="bus-live-tag">● LIVE</div>
+            </div>`;
+
+        if (busMarkers[busData.busId]) {
+            busMarkers[busData.busId].setLatLng(position);
+            busMarkers[busData.busId].setPopupContent(popupContent);
+            if (busData.heading != null) {
+                busMarkers[busData.busId].setRotationAngle(busData.heading);
             }
+        } else {
+            const marker = L.marker(position, {
+                icon: busIcon,
+                rotationAngle: busData.heading || 0,
+            }).bindPopup(popupContent).addTo(busMarkersLayer);
+            busMarkers[busData.busId] = marker;
+        }
+    }
+
+    // Debounced refresh for list during live updates
+    let liveRefreshTimer = null;
+    function refreshLiveListFromMarkers() {
+        if (liveRefreshTimer) clearTimeout(liveRefreshTimer);
+        liveRefreshTimer = setTimeout(() => fetchAndRenderLive(), 5000);
+    }
+
+    function highlightLiveRoute(routeId) {
+        const idx   = allRoutes.findIndex(r => r.id === routeId);
+        const route = allRoutes[idx];
+        if (!route) return;
+
+        highlightedRouteLayer.clearLayers();
+        allRoutesLayer.setStyle({ opacity: 0.12, weight: 3 });
+
+        const color = getRouteColor(idx);
+        const polyline = L.polyline(route.polyline, {
+            color,
+            weight: 6,
+            opacity: 1,
+        }).addTo(highlightedRouteLayer);
+
+        route.stops.forEach(stop => {
+            L.circleMarker([stop.lat, stop.lng], {
+                radius: 6,
+                fillColor: '#fff',
+                color,
+                weight: 2.5,
+                opacity: 1,
+                fillOpacity: 1,
+            }).bindPopup(`<strong>${stop.name}</strong>`).addTo(highlightedRouteLayer);
+        });
+
+        map.fitBounds(polyline.getBounds().pad(0.15));
+
+        srName.textContent = route.name;
+        srMeta.textContent = `${route.stops.length} stops · Live tracking active`;
+        selectedInfo.classList.add('visible');
+    }
+
+    // ══════════════════════════════════════════════
+    //  ALL ROUTES MODE (switch back)
+    // ══════════════════════════════════════════════
+
+    function switchToAllMode() {
+        currentMode = 'all';
+        tabLive.classList.remove('active', 'live-tab');
+        tabAll.classList.add('active');
+        panelTitle.textContent = 'All Routes';
+        showAllBtn.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            Show Full Network`;
+        showAllBtn.className = 'panel-action-btn';
+
+        selectedInfo.classList.remove('visible');
+
+        // Unsubscribe from live updates
+        if (socket) {
+            socket.emit('unsubscribeFromAllBuses');
+            socket.off('allBusLocations');
+            socket.off('globalLocationUpdate');
         }
 
-        function initializeMap() {
-            map = L.map('map').setView([20.5937, 78.9629], 5);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-            allRoutesLayer = new L.FeatureGroup().addTo(map);
-            highlightedRouteLayer = new L.FeatureGroup().addTo(map);
-        }
+        if (liveRefreshTimer) clearTimeout(liveRefreshTimer);
 
-        // --- UI & Map Logic ---
-        function populateRouteList(routes) {
-            routeListUl.innerHTML = '';
-            routes.forEach((route, index) => {
-                const li = document.createElement('li');
-                li.className = 'route-list-item';
-                li.dataset.id = route.id;
-                li.innerHTML = `<span class="route-color-dot" style="background-color: ${getRouteColor(index)}"></span> <span>${route.name}</span>`;
-                routeListUl.appendChild(li);
-            });
-        }
-        
-        function drawAllRoutes() {
-            allRoutesLayer.clearLayers();
-            highlightedRouteLayer.clearLayers();
-            allRoutes.forEach((route, index) => {
-                L.polyline(route.polyline, { color: getRouteColor(index), weight: 4, opacity: 0.7 }).addTo(allRoutesLayer);
-            });
-            if (allRoutes.length > 0) {
-                map.fitBounds(allRoutesLayer.getBounds().pad(0.1));
-            }
-        }
+        populateAllRoutesList(allRoutes);
+        drawAllRoutes();
+    }
 
-        function highlightRoute(routeId) {
-            const route = allRoutes.find(r => r.id === routeId);
-            if (!route) return;
-            
-            highlightedRouteLayer.clearLayers();
-            allRoutesLayer.setStyle({ opacity: 0.2 });
-            
-            const polyline = L.polyline(route.polyline, { color: '#ff00ff', weight: 7 }).addTo(highlightedRouteLayer);
-            route.stops.forEach(stop => {
-                L.marker([stop.lat, stop.lng]).bindPopup(stop.name).addTo(highlightedRouteLayer);
-            });
-            map.fitBounds(polyline.getBounds().pad(0.1));
-        }
-        
-        // --- Event Listeners ---
-        function setupEventListeners() {
-            routeListUl.addEventListener('click', (e) => {
-                const item = e.target.closest('.route-list-item');
-                if (!item) return;
+    // ─── Event listeners ────────────────────────
+    function setupEventListeners() {
+        // Tab switching
+        tabAll.addEventListener('click', () => {
+            if (currentMode === 'all') return;
+            switchToAllMode();
+        });
 
-                document.querySelectorAll('.route-list-item').forEach(el => el.classList.remove('selected'));
-                item.classList.add('selected');
+        tabLive.addEventListener('click', () => {
+            if (currentMode === 'live') return;
+            switchToLiveMode();
+        });
 
+        // Route list click (works for both modes)
+        routeListUl.addEventListener('click', e => {
+            const item = e.target.closest('.route-list-item');
+            if (!item) return;
+
+            document.querySelectorAll('.route-list-item').forEach(el => el.classList.remove('selected'));
+            item.classList.add('selected');
+
+            if (currentMode === 'live') {
+                highlightLiveRoute(item.dataset.id);
+            } else {
                 highlightRoute(item.dataset.id);
-                
-                if (window.innerWidth <= 768) {
-                    routeListPanel.classList.remove('open');
-                }
-            });
+            }
 
-            showAllBtn.addEventListener('click', () => {
-                document.querySelectorAll('.route-list-item').forEach(el => el.classList.remove('selected'));
-                allRoutesLayer.setStyle({ opacity: 0.7 });
+            if (window.innerWidth <= 768) routeListPanel.classList.remove('open');
+        });
+
+        // Show all / reset button
+        showAllBtn.addEventListener('click', () => {
+            document.querySelectorAll('.route-list-item').forEach(el => el.classList.remove('selected'));
+            selectedInfo.classList.remove('visible');
+
+            if (currentMode === 'live') {
+                highlightedRouteLayer.clearLayers();
+                fetchAndRenderLive();
+            } else {
                 drawAllRoutes();
-            });
+            }
+        });
 
-            mobileToggleBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                routeListPanel.classList.toggle('open');
-            });
+        mobileToggleBtn.addEventListener('click', e => {
+            e.stopPropagation();
+            routeListPanel.classList.toggle('open');
+        });
 
-            mapElement.addEventListener('click', () => {
-                if (window.innerWidth <= 768 && routeListPanel.classList.contains('open')) {
-                    routeListPanel.classList.remove('open');
-                }
-            });
+        mapElement.addEventListener('click', () => {
+            if (window.innerWidth <= 768 && routeListPanel.classList.contains('open')) {
+                routeListPanel.classList.remove('open');
+            }
+        });
+    }
+
+    // ─── Init ───────────────────────────────────
+    async function initializePage() {
+        loadNavbar('navbar-placeholder');
+        loadFooter('footer-placeholder');
+        initializeMap();
+        setupEventListeners();
+
+        try {
+            const res = await fetch('/api/routes');
+            allRoutes = await res.json();
+            populateAllRoutesList(allRoutes);
+            drawAllRoutes();
+        } catch (err) {
+            console.error('Failed to load routes:', err);
+            routeListUl.innerHTML = `
+                <li style="padding:20px;color:#64748b;font-size:.85rem;text-align:center;">
+                    Failed to load routes.<br>Please refresh.
+                </li>`;
         }
+    }
 
-        // --- Run on page load ---
-        document.addEventListener('DOMContentLoaded', initializePage);
-    </script>
+    document.addEventListener('DOMContentLoaded', initializePage);
+</script>
+
 </body>
 </html>

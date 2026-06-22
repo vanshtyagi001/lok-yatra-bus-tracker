@@ -3,9 +3,11 @@ require('dotenv').config();
 
 // Core Node.js modules
 const http = require('http');
+const path = require('path');
 
 // NPM packages
 const express = require('express');
+const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const socketIo = require('socket.io');
 const axios = require('axios');
@@ -32,9 +34,80 @@ mongoose.connect(MONGO_URI)
     .then(() => console.log('Successfully connected to local MongoDB.'))
     .catch(err => console.error('Error connecting to MongoDB:', err));
 
-// --- Middleware Setup ---
-app.use(express.static('public'));
+// --- Body Parser Middleware ---
 app.use(express.json());
+
+// --- Custom Cookie Parser Middleware ---
+app.use((req, res, next) => {
+    const cookies = {};
+    const cookieHeader = req.headers.cookie;
+    if (cookieHeader) {
+        cookieHeader.split(';').forEach(cookie => {
+            const parts = cookie.split('=');
+            if (parts[0]) {
+                cookies[parts[0].trim()] = (parts[1] || '').trim();
+            }
+        });
+    }
+    req.cookies = cookies;
+    next();
+});
+
+// --- Admin Authentication Check Middleware ---
+const adminAuth = (req, res, next) => {
+    const token = req.cookies.adminToken;
+    if (!token) {
+        return res.redirect('/admin/login');
+    }
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        if (decoded.role === 'admin') {
+            next();
+        } else {
+            res.redirect('/admin/login');
+        }
+    } catch (err) {
+        res.redirect('/admin/login');
+    }
+};
+
+// Route for serving the admin page securely
+app.get(['/admin', '/admin.html'], adminAuth, (req, res) => {
+    res.sendFile(path.join(__dirname, 'private', 'admin.html'));
+});
+
+// Route for serving the admin login page
+app.get('/admin/login', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'admin-login.html'));
+});
+
+// API for Admin Login
+app.post('/api/admin/login', (req, res) => {
+    const { password } = req.body;
+    const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+    
+    if (password === adminPassword) {
+        const token = jwt.sign({ role: 'admin' }, process.env.JWT_SECRET, { expiresIn: '1d' });
+        res.cookie('adminToken', token, {
+            httpOnly: true,
+            secure: false, // Set to true if HTTPS
+            sameSite: 'strict',
+            maxAge: 24 * 60 * 60 * 1000 // 1 day
+        });
+        return res.json({ success: true });
+    } else {
+        return res.status(401).json({ success: false, message: 'Invalid password' });
+    }
+});
+
+// API for Admin Logout
+app.post('/api/admin/logout', (req, res) => {
+    res.clearCookie('adminToken');
+    return res.json({ success: true });
+});
+
+// --- Middleware Setup ---
+app.use(express.static('public', { extensions: ['html'] }));
 
 // --- API Endpoints ---
 
@@ -101,6 +174,12 @@ app.post('/api/autoroute', async (req, res) => {
 });
 
 
+// --- API: Get all active buses ---
+app.get('/api/buses/active', (req, res) => {
+    const activeBuses = Object.values(busLocations);
+    res.json(activeBuses);
+});
+
 // --- Real-time Socket.IO Logic ---
 const busLocations = {}; // In-memory store for live bus locations
 
@@ -122,6 +201,8 @@ io.on('connection', (socket) => {
             
             // Emit only to passengers subscribed to this specific route
             io.to(bus.assignedRoute).emit('locationUpdate', locationData);
+            // Also emit to the global live-buses room for the route map
+            io.to('live-buses-global').emit('globalLocationUpdate', locationData);
         }
     });
 
@@ -131,6 +212,18 @@ io.on('connection', (socket) => {
         // Immediately send current bus locations for this route to the new subscriber
         const relevantBuses = Object.values(busLocations).filter(bus => bus.routeId === routeId);
         socket.emit('initialBusLocations', relevantBuses);
+    });
+
+    // Handles subscribing to ALL live bus updates (for route map page)
+    socket.on('subscribeToAllBuses', () => {
+        socket.join('live-buses-global');
+        // Send all current bus locations immediately
+        const allBuses = Object.values(busLocations);
+        socket.emit('allBusLocations', allBuses);
+    });
+
+    socket.on('unsubscribeFromAllBuses', () => {
+        socket.leave('live-buses-global');
     });
 
     // Handles a passenger unsubscribing from a route

@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Travel Saathi</title>
+    <link rel="icon" type="image/png" href="/images/favicon.png">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+
+    <style>
+        :root {
+            --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --color-bg: #f4f6f9;
+            --color-surface: #ffffff;
+            --color-border: #e2e8f0;
+            --color-border-focus: #1e293b;
+            --color-text-primary: #0f172a;
+            --color-text-secondary: #64748b;
+            --color-text-placeholder: #94a3b8;
+            --color-accent: #1e293b;
+            --color-accent-hover: #0f172a;
+            --color-accent-soft: #f1f5f9;
+            --color-danger: #ef4444;
+            --color-danger-hover: #dc2626;
+            --color-danger-soft: #fef2f2;
+            --radius-md: 12px;
+            --radius-sm: 8px;
+            --shadow-premium: 0 1px 3px rgba(0,0,0,0.05), 0 4px 12px rgba(0,0,0,0.03);
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font);
+            background-color: var(--color-bg);
+            color: var(--color-text-primary);
+            height: 100vh;
+            margin: 0;
+            display: flex;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* --- Sidebar Navigation --- */
+        #sidebar {
+            width: 250px;
+            background-color: var(--color-surface);
+            border-right: 1px solid var(--color-border);
+            height: 100vh;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            padding: 24px 16px;
+            z-index: 10;
+        }
+
+        #sidebar h2 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--color-text-primary);
+            margin-bottom: 32px;
+            padding-left: 0;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .sidebar-logo {
+            height: 42px;
+            width: auto;
+        }
+
+        .nav-links-container {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            flex-grow: 1;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            color: var(--color-text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border-radius: var(--radius-sm);
+            transition: all 0.2s ease;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+        }
+
+        .nav-link:hover {
+            color: var(--color-text-primary);
+            background-color: var(--color-accent-soft);
+        }
+
+        .nav-link.active {
+            color: var(--color-text-primary);
+            background-color: var(--color-accent-soft);
+            border-left-color: var(--color-accent);
+            font-weight: 600;
+        }
+
+        .nav-link svg {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+        }
+
+        .logout-link {
+            margin-top: auto;
+            color: var(--color-danger);
+        }
+
+        .logout-link:hover {
+            background-color: var(--color-danger-soft) !important;
+            color: var(--color-danger-hover);
+        }
+
+        /* --- Layout --- */
+        #main-content {
+            flex-grow: 1;
+            height: 100vh;
+            overflow-y: auto;
+            padding: 30px;
+            box-sizing: border-box;
+            background-color: var(--color-bg);
+        }
+
+        .content-panel {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .content-panel.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(4px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .map-panel-layout {
+            display: none;
+            height: calc(100vh - 120px);
+            flex-direction: row;
+            gap: 24px;
+        }
+
+        .map-panel-layout.active {
+            display: flex;
+        }
+
+        .map-container {
+            height: 100%;
+            flex-grow: 1;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--color-border);
+            box-shadow: var(--shadow-premium);
+            z-index: 1;
+        }
+
+        .controls-container {
+            width: 380px;
+            flex-shrink: 0;
+            height: 100%;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            padding-right: 4px;
+        }
+
+        .controls-container::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .controls-container::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 4px;
+        }
+
+        /* --- General & Card Styles --- */
+        .card {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            padding: 24px;
+            box-shadow: var(--shadow-premium);
+        }
+
+        .panel-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 24px;
+            letter-spacing: -0.5px;
+            color: var(--color-text-primary);
+        }
+
+        h3 {
+            color: var(--color-text-primary);
+            font-size: 1.05rem;
+            font-weight: 600;
+            margin-top: 0;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--color-border);
+            margin-bottom: 20px;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 12px 14px;
+            margin-bottom: 16px;
+            background-color: var(--color-surface);
+            border: 1.5px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            color: var(--color-text-primary);
+            font-size: 0.9rem;
+            font-family: var(--font);
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: var(--color-border-focus);
+            box-shadow: 0 0 0 3px rgba(30, 41, 59, 0.08);
+        }
+
+        input::placeholder {
+            color: var(--color-text-placeholder);
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 12px;
+            border-radius: var(--radius-sm);
+            border: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            font-family: var(--font);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        .primary-btn {
+            background-color: var(--color-accent);
+        }
+
+        .primary-btn:hover {
+            background-color: var(--color-accent-hover);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .secondary-btn {
+            background-color: var(--color-surface);
+            border: 1.5px solid var(--color-border);
+            color: var(--color-text-primary);
+        }
+
+        .secondary-btn:hover {
+            background-color: var(--color-accent-soft);
+            border-color: var(--color-text-secondary);
+        }
+
+        .danger-btn {
+            background-color: var(--color-danger);
+            color: white;
+        }
+
+        .danger-btn:hover {
+            background-color: var(--color-danger-hover);
+        }
+
+        .info-btn {
+            background-color: #64748b;
+        }
+
+        .info-btn:hover {
+            background-color: #475569;
+        }
+
+        .mode-toggle {
+            display: flex;
+            background-color: #f1f5f9;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            padding: 3px;
+            margin-bottom: 20px;
+        }
+
+        .mode-toggle button {
+            border-radius: 6px;
+            background-color: transparent;
+            margin-bottom: 0;
+            padding: 8px;
+            font-weight: 500;
+            font-size: 0.85rem;
+            color: var(--color-text-secondary);
+        }
+
+        .mode-toggle button.active {
+            background-color: var(--color-accent);
+            color: white;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        hr {
+            border: 0;
+            height: 1px;
+            background: var(--color-border);
+            margin: 18px 0;
+        }
+
+        #manual-mode-panel {
+            color: var(--color-text-secondary);
+            font-size: 0.82rem;
+            line-height: 1.5;
+            margin-bottom: 16px;
+        }
+
+        /* --- Item & Route Lists --- */
+        .item-list ul,
+        .route-overview-list {
+            list-style: none;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .item-list li {
+            background: #f8fafc;
+            padding: 16px;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s ease;
+        }
+
+        .item-list li:hover {
+            background: #f1f5f9;
+            border-color: var(--color-text-secondary);
+        }
+
+        .route-overview-list .list-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--color-border);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+            color: var(--color-text-secondary);
+        }
+
+        .route-overview-list .list-item:hover {
+            background-color: var(--color-accent-soft);
+            color: var(--color-text-primary);
+        }
+
+        .route-overview-list .list-item.selected {
+            background-color: var(--color-accent-soft);
+            border: 1px solid var(--color-border);
+            color: var(--color-text-primary);
+            font-weight: 600;
+        }
+
+        .info {
+            flex-basis: 100%;
+            margin-bottom: 12px;
+            line-height: 1.5;
+            font-size: 0.9rem;
+        }
+
+        .info strong {
+            color: var(--color-text-primary);
+            font-size: 0.95rem;
+        }
+
+        .info small {
+            color: var(--color-text-secondary);
+        }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .actions button,
+        .actions select {
+            margin-bottom: 0;
+        }
+
+        .actions select {
+            padding: 8px 12px;
+            font-size: 0.85rem;
+        }
+
+        #selected-route-info {
+            font-size: 0.9rem;
+            color: var(--color-text-secondary);
+        }
+
+        #selected-route-info h4 {
+            color: var(--color-text-primary);
+            font-size: 1.05rem;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        #selected-route-info ol {
+            padding-left: 20px;
+            line-height: 1.6;
+        }
+
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 992px) {
+            .grid-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* --- Modal Styles --- */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(4px);
+            align-items: center;
+            justify-content: center;
+            animation: fadeInModal 0.2s ease;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            width: 100%;
+            max-width: 480px;
+            animation: slideInModal 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h3 {
+            margin-bottom: 0;
+            border-bottom: none;
+            padding-bottom: 0;
+            font-size: 1.2rem;
+        }
+
+        .close-modal-btn {
+            background: none;
+            border: none;
+            color: var(--color-text-secondary);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0;
+            width: auto;
+            margin-bottom: 0;
+            transition: color 0.2s;
+        }
+
+        .close-modal-btn:hover {
+            color: var(--color-text-primary);
+            transform: none;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--color-text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .form-group input {
+            margin-bottom: 0;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .modal-actions button {
+            margin-bottom: 0;
+            flex: 1;
+        }
+
+        @keyframes fadeInModal {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideInModal {
+            from {
+                opacity: 0;
+                transform: scale(0.95) translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="sidebar">
+        <h2>
+            <img src="/images/logo.png" alt="Travel Saathi" class="sidebar-logo">
+        </h2>
+        <div class="nav-links-container">
+            <a href="#" class="nav-link active" data-target="overview-panel">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="2" y1="12" x2="22" y2="12" />
+                    <path
+                        d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                </svg>
+                Overview
+            </a>
+            <a href="#" class="nav-link" data-target="routes-panel">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 18l6-6-6-6" />
+                </svg>
+                Route Management
+            </a>
+            <a href="#" class="nav-link" data-target="buses-panel">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+                    <path d="M17 21v2" />
+                    <path d="M7 21v2" />
+                    <circle cx="6" cy="17" r="1" />
+                    <circle cx="18" cy="17" r="1" />
+                    <path d="M2 11h20" />
+                </svg>
+                Bus Management
+            </a>
+            <a href="#" class="nav-link" data-target="staff-panel">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+                Staff Management
+            </a>
+
+            <a href="#" class="nav-link logout-link" id="admin-logout-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                    <polyline points="16 17 21 12 16 7" />
+                    <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+                Logout
+            </a>
+        </div>
+    </div>
+
+    <div id="main-content">
+        <!-- ======================= NETWORK OVERVIEW PANEL ======================= -->
+        <div id="overview-panel" class="content-panel map-panel-layout active">
+            <div id="overview-map" class="map-container"></div>
+            <div class="controls-container">
+                <div class="card">
+                    <h3>All Routes</h3>
+                    <div id="overview-route-list" class="route-overview-list"></div>
+                </div>
+                <div class="card">
+                    <h3>Selected Route Details</h3>
+                    <div id="selected-route-info">
+                        <p>Click a route from the list to see its details.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ======================= ROUTE MANAGEMENT PANEL ======================= -->
+        <div id="routes-panel" class="content-panel map-panel-layout">
+            <div id="creation-map" class="map-container"></div>
+            <div class="controls-container">
+                <div class="card">
+                    <h3>Create Route</h3>
+                    <div class="mode-toggle">
+                        <button id="manual-mode-btn">Manual</button>
+                        <button id="auto-mode-btn">Automatic</button>
+                    </div>
+                    <input type="text" id="routeName" placeholder="Route Name (e.g., Downtown Loop)">
+                    <div id="manual-mode-panel">
+                        <p>Use Leaflet draw tools on the map to click stops and create route path line.</p>
+                    </div>
+                    <div id="auto-mode-panel">
+                        <p>Add stops on map in order, then generate routing polyline automatically.</p>
+                        <button id="generate-route-btn" class="secondary-btn">Generate Route</button>
+                    </div>
+                    <hr>
+                    <button id="saveRouteBtn" class="primary-btn">Save Route</button>
+                    <button id="clearRouteBtn" class="danger-btn">Clear Drawing</button>
+                </div>
+                <div class="card item-list">
+                    <h3>Existing Routes</h3>
+                    <ul id="route-list"></ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- ======================= BUSES PANEL ======================= -->
+        <div id="buses-panel" class="content-panel">
+            <h2 class="panel-title">Bus Management</h2>
+            <div class="grid-layout">
+                <div class="card">
+                    <h3>Create a New Bus</h3>
+                    <input type="text" id="busNumber" placeholder="Bus Number (e.g., PB08-1234)">
+                    <input type="number" id="busSeats" placeholder="Number of Seats (e.g., 40)">
+                    <button id="createBusBtn" class="primary-btn">Create Bus</button>
+                </div>
+                <div class="card item-list">
+                    <h3>Existing Buses</h3>
+                    <ul id="bus-list"></ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- ======================= STAFF PANEL ======================= -->
+        <div id="staff-panel" class="content-panel">
+            <h2 class="panel-title">Staff Management</h2>
+            <div class="grid-layout">
+                <div class="card">
+                    <h3>Create New Staff</h3>
+                    <input type="text" id="staffName" placeholder="Full Name">
+                    <input type="text" id="staffUsername" placeholder="Username (for login)">
+                    <input type="email" id="staffEmail" placeholder="Email Address">
+                    <input type="password" id="staffPassword" placeholder="Temporary Password">
+                    <button id="createStaffBtn" class="primary-btn">Create Staff</button>
+                </div>
+                <div class="card item-list">
+                    <h3>Existing Staff</h3>
+                    <ul id="staff-list"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Staff Modal -->
+    <div id="edit-staff-modal" class="modal">
+        <div class="modal-content card">
+            <div class="modal-header">
+                <h3>Edit Staff Details</h3>
+                <button class="close-modal-btn" onclick="closeEditStaffModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editStaffId">
+                <div class="form-group">
+                    <label for="editStaffName">Full Name</label>
+                    <input type="text" id="editStaffName" placeholder="Full Name">
+                </div>
+                <div class="form-group">
+                    <label for="editStaffUsername">Username</label>
+                    <input type="text" id="editStaffUsername" placeholder="Username">
+                </div>
+                <div class="form-group">
+                    <label for="editStaffEmail">Email Address</label>
+                    <input type="email" id="editStaffEmail" placeholder="Email Address">
+                </div>
+                <div class="form-group">
+                    <label for="editStaffPassword">New Password (leave blank to keep current)</label>
+                    <input type="password" id="editStaffPassword" placeholder="New Password (optional)">
+                </div>
+                <div class="modal-actions">
+                    <button class="secondary-btn" onclick="closeEditStaffModal()">Cancel</button>
+                    <button id="saveStaffBtn" class="primary-btn">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="/map-boundary.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // --- Socket & State ---
+        const socket = io();
+        let ALL_DATA = { routes: [], buses: [], staff: [] };
+        let routeMode = 'manual';
+
+        // State for Creation Map
+        let isCreationMapInitialized = false;
+        let creationMap, drawnItems, drawControl, routePolyline = null, routeStops = [];
+
+        // State for Overview Map
+        let isOverviewMapInitialized = false;
+        let overviewMap, allRoutesOverviewLayer, highlightedRouteLayer;
+
+        // --- DOM Elements ---
+        const navLinks = document.querySelectorAll('.nav-link');
+        const contentPanels = document.querySelectorAll('.content-panel');
+        const createBusBtn = document.getElementById('createBusBtn');
+        const busNumberInput = document.getElementById('busNumber');
+        const busSeatsInput = document.getElementById('busSeats');
+        const busListUl = document.getElementById('bus-list');
+        const createStaffBtn = document.getElementById('createStaffBtn');
+        const staffNameInput = document.getElementById('staffName');
+        const staffUsernameInput = document.getElementById('staffUsername');
+        const staffEmailInput = document.getElementById('staffEmail');
+        const staffPasswordInput = document.getElementById('staffPassword');
+        const staffListUl = document.getElementById('staff-list');
+        const routeListUl = document.getElementById('route-list');
+        const routeNameInput = document.getElementById('routeName');
+        const manualModeBtn = document.getElementById('manual-mode-btn');
+        const autoModeBtn = document.getElementById('auto-mode-btn');
+        const manualPanel = document.getElementById('manual-mode-panel');
+        const autoPanel = document.getElementById('auto-mode-panel');
+        const generateRouteBtn = document.getElementById('generate-route-btn');
+        const saveRouteBtn = document.getElementById('saveRouteBtn');
+        const clearRouteBtn = document.getElementById('clearRouteBtn');
+        const overviewRouteList = document.getElementById('overview-route-list');
+        const selectedRouteInfo = document.getElementById('selected-route-info');
+
+        // --- MAP INITIALIZATION ---
+        function initializeCreationMap() {
+            if (isCreationMapInitialized) return;
+            creationMap = L.map('creation-map').setView([20.5937, 78.9629], 5);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                maxZoom: 19
+            }).addTo(creationMap);
+
+            if (window.addIndiaBoundary) {
+                window.addIndiaBoundary(creationMap);
+            }
+
+            drawnItems = new L.FeatureGroup();
+            creationMap.addLayer(drawnItems);
+            drawControl = new L.Control.Draw({
+                draw: { polygon: false, rectangle: false, circle: false, circlemarker: false },
+                edit: { featureGroup: drawnItems }
+            });
+            creationMap.addControl(drawControl);
+            creationMap.on(L.Draw.Event.CREATED, function (event) {
+                const layer = event.layer, type = event.layerType;
+                if (type === 'polyline' && routeMode === 'manual') {
+                    if (routePolyline) return alert('A route path already exists.');
+                    routePolyline = layer;
+                    drawnItems.addLayer(layer);
+                }
+                if (type === 'marker') {
+                    const stopName = prompt("Enter stop name:");
+                    if (stopName) {
+                        routeStops.push({ name: stopName, lat: layer.getLatLng().lat, lng: layer.getLatLng().lng });
+                        layer.bindPopup(`<b>${stopName}</b>`).openPopup();
+                        drawnItems.addLayer(layer);
+                    }
+                }
+            });
+            isCreationMapInitialized = true;
+            setRouteMode('manual');
+        }
+
+        function initializeOverviewMap() {
+            if (isOverviewMapInitialized) return;
+            overviewMap = L.map('overview-map').setView([20.5937, 78.9629], 5);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                maxZoom: 19
+            }).addTo(overviewMap);
+
+            if (window.addIndiaBoundary) {
+                window.addIndiaBoundary(overviewMap);
+            }
+
+            allRoutesOverviewLayer = new L.FeatureGroup().addTo(overviewMap);
+            highlightedRouteLayer = new L.FeatureGroup().addTo(overviewMap);
+            isOverviewMapInitialized = true;
+        }
+
+        // --- Navigation Logic ---
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetId = link.getAttribute('data-target');
+                if (!targetId) return; // Skip logout
+
+                navLinks.forEach(l => l.classList.remove('active'));
+                contentPanels.forEach(p => p.classList.remove('active'));
+                link.classList.add('active');
+                document.getElementById(targetId).classList.add('active');
+
+                if (targetId === 'routes-panel') {
+                    initializeCreationMap();
+                    setTimeout(() => { if (creationMap) creationMap.invalidateSize() }, 10);
+                } else if (targetId === 'overview-panel') {
+                    initializeOverviewMap();
+                    setTimeout(() => {
+                        if (overviewMap) {
+                            overviewMap.invalidateSize();
+                            drawAllRoutesOnOverviewMap();
+                        }
+                    }, 10);
+                }
+            });
+        });
+
+        // --- Overview Map Functions ---
+        const ROUTE_COLORS = ['#3388ff', '#e33f3f', '#49cc54', '#e8871a', '#8e44ad'];
+        function getRouteColor(index) { return ROUTE_COLORS[index % ROUTE_COLORS.length]; }
+
+        function drawAllRoutesOnOverviewMap() {
+            if (!isOverviewMapInitialized) return;
+            allRoutesOverviewLayer.clearLayers();
+            highlightedRouteLayer.clearLayers();
+            selectedRouteInfo.innerHTML = '<p>Click a route from the list to see its details.</p>';
+            ALL_DATA.routes.forEach((route, index) => {
+                const polyline = L.polyline(route.polyline, { color: getRouteColor(index), weight: 4, opacity: 0.7 });
+                allRoutesOverviewLayer.addLayer(polyline);
+            });
+            if (ALL_DATA.routes.length > 0) {
+                overviewMap.fitBounds(allRoutesOverviewLayer.getBounds().pad(0.1));
+            }
+        }
+
+        function displayRouteDetails(routeId) {
+            const route = ALL_DATA.routes.find(r => r.id === routeId);
+            if (!route || !isOverviewMapInitialized) return;
+            document.querySelectorAll('#overview-route-list .list-item').forEach(item => {
+                item.classList.toggle('selected', item.dataset.id === routeId);
+            });
+            highlightedRouteLayer.clearLayers();
+            const polyline = L.polyline(route.polyline, { color: '#ff00ff', weight: 7 }).addTo(highlightedRouteLayer);
+            route.stops.forEach(stop => {
+                L.marker([stop.lat, stop.lng]).bindPopup(stop.name).addTo(highlightedRouteLayer);
+            });
+            overviewMap.fitBounds(polyline.getBounds().pad(0.1));
+            let stopsHtml = `<h4>${route.name}</h4><ol>`;
+            route.stops.forEach(stop => { stopsHtml += `<li>${stop.name}</li>`; });
+            stopsHtml += '</ol>';
+            selectedRouteInfo.innerHTML = stopsHtml;
+        }
+
+        // --- Data Population Functions ---
+        function populateAllLists(data) {
+            populateStaffList(data.staff);
+            populateBusList(data.buses, data.routes, data.staff);
+            populateRouteList(data.routes);
+            populateOverviewRouteList(data.routes);
+            if (isOverviewMapInitialized) {
+                drawAllRoutesOnOverviewMap();
+            }
+        }
+
+        function populateOverviewRouteList(routes) {
+            overviewRouteList.innerHTML = '';
+            if (routes.length === 0) { overviewRouteList.innerHTML = '<p>No routes created yet.</p>'; return; }
+            routes.forEach((route, index) => {
+                const item = document.createElement('div');
+                item.className = 'list-item';
+                item.dataset.id = route.id;
+                item.innerHTML = `<strong style="color:${getRouteColor(index)};">&#9679;</strong> ${route.name}`;
+                overviewRouteList.appendChild(item);
+            });
+        }
+
+        function populateRouteList(routes) {
+            routeListUl.innerHTML = '';
+            routes.forEach(r => {
+                const li = document.createElement('li');
+                li.innerHTML = `<div class="info"><strong>${r.name}</strong><br><small>${r.stops.length} stops</small></div><div class="actions"><button class="danger-btn" data-action="delete-route" data-id="${r.id}">Delete</button></div>`;
+                routeListUl.appendChild(li);
+            });
+        }
+
+        // --- Logout Event Listener ---
+        document.getElementById('admin-logout-btn').addEventListener('click', async (e) => {
+            e.preventDefault();
+            if (confirm('Are you sure you want to log out from the Admin Dashboard?')) {
+                const response = await fetch('/api/admin/logout', { method: 'POST' });
+                if (response.ok) {
+                    window.location.href = '/admin/login';
+                } else {
+                    alert('Logout failed.');
+                }
+            }
+        });
+
+        function populateStaffList(staff) {
+            staffListUl.innerHTML = '';
+            staff.forEach(s => {
+                const li = document.createElement('li');
+                li.innerHTML = `<div class="info"><strong>${s.name}</strong> (${s.username})<br><small>${s.email}</small></div><div class="actions"><button class="primary-btn" data-action="edit-staff" data-id="${s._id}">Edit</button><button class="danger-btn" data-action="delete-staff" data-id="${s._id}">Delete</button></div>`;
+                staffListUl.appendChild(li);
+            });
+        }
+
+        function populateBusList(buses, routes, staff) {
+            busListUl.innerHTML = '';
+            buses.forEach(bus => {
+                const li = document.createElement('li');
+                let routeOptions = '<option value="">-- Assign Route --</option>';
+                routes.forEach(r => { routeOptions += `<option value="${r.id}" ${bus.assignedRoute === r.id ? 'selected' : ''}>${r.name}</option>`; });
+                let staffOptions = '<option value="">-- Assign Staff --</option>';
+                staff.forEach(s => { const selected = bus.assignedStaff && bus.assignedStaff._id === s._id; staffOptions += `<option value="${s._id}" ${selected ? 'selected' : ''}>${s.name}</option>`; });
+                li.innerHTML = `<div class="info"><strong>${bus.busNumber}</strong><br><small>${bus.seats} Seats</small></div><div class="actions"><select data-action="assign-route" data-id="${bus._id}">${routeOptions}</select><select data-action="assign-staff" data-id="${bus._id}">${staffOptions}</select><button class="danger-btn" data-action="delete-bus" data-id="${bus._id}">Delete</button></div>`;
+                busListUl.appendChild(li);
+            });
+        }
+
+        // --- Route Creation Logic ---
+        function setRouteMode(newMode) {
+            clearRouteForm();
+            routeMode = newMode;
+            if (newMode === 'manual') {
+                manualModeBtn.classList.add('active'); autoModeBtn.classList.remove('active');
+                manualPanel.style.display = 'block'; autoPanel.style.display = 'none';
+                if (drawControl) drawControl.setDrawingOptions({ polyline: true, marker: true });
+            } else {
+                manualModeBtn.classList.remove('active'); autoModeBtn.classList.add('active');
+                manualPanel.style.display = 'none'; autoPanel.style.display = 'block';
+                if (drawControl) drawControl.setDrawingOptions({ polyline: false, marker: true });
+            }
+        }
+        manualModeBtn.addEventListener('click', () => setRouteMode('manual'));
+        autoModeBtn.addEventListener('click', () => setRouteMode('auto'));
+
+        function clearRouteForm() {
+            routeNameInput.value = '';
+            if (drawnItems) drawnItems.clearLayers();
+            routePolyline = null;
+            routeStops = [];
+        }
+        clearRouteBtn.addEventListener('click', clearRouteForm);
+
+        saveRouteBtn.addEventListener('click', () => {
+            const name = routeNameInput.value.trim();
+            if (!name) return alert('Please enter a route name.');
+            if (!routePolyline) return alert('Please draw or generate a route path.');
+            if (routeStops.length < 2) return alert('Please add at least two stops.');
+            socket.emit('createRoute', { name, polyline: routePolyline.getLatLngs(), stops: routeStops });
+            clearRouteForm();
+        });
+
+        generateRouteBtn.addEventListener('click', async () => {
+            if (routeStops.length < 2) return alert('Please add at least two stops.');
+            if (routePolyline) drawnItems.removeLayer(routePolyline);
+            try {
+                const response = await fetch('/api/autoroute', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ stops: routeStops })
+                });
+                if (!response.ok) throw new Error('API response not OK');
+                const data = await response.json();
+                routePolyline = L.polyline(data.polyline, { color: 'green' });
+                drawnItems.addLayer(routePolyline);
+                creationMap.fitBounds(routePolyline.getBounds());
+            } catch (error) { alert('Could not generate route automatically.'); }
+        });
+
+        // --- Socket Listeners ---
+        socket.on('connect', () => socket.emit('requestInitialData'));
+        socket.on('initialData', (data) => { ALL_DATA = data; populateAllLists(data); });
+        socket.on('staffError', (msg) => alert(msg));
+
+        // --- Event Listeners for Forms and Actions ---
+        createBusBtn.addEventListener('click', () => {
+            const busNumber = busNumberInput.value.trim();
+            const seats = parseInt(busSeatsInput.value);
+            if (!busNumber || !seats) return alert('Please provide a bus number and number of seats.');
+            socket.emit('createBus', { busNumber, seats });
+            busNumberInput.value = ''; busSeatsInput.value = '';
+        });
+        createStaffBtn.addEventListener('click', () => {
+            const name = staffNameInput.value.trim();
+            const username = staffUsernameInput.value.trim();
+            const email = staffEmailInput.value.trim();
+            const password = staffPasswordInput.value;
+            if (!name || !username || !email || !password) return alert('Please fill all staff fields.');
+            socket.emit('createStaff', { name, username, email, password });
+            staffNameInput.value = ''; staffUsernameInput.value = ''; staffEmailInput.value = ''; staffPasswordInput.value = '';
+        });
+
+        // --- Modal Utility Functions ---
+        window.closeEditStaffModal = function() {
+            document.getElementById('edit-staff-modal').classList.remove('active');
+        };
+
+        // Save staff updates
+        document.getElementById('saveStaffBtn').addEventListener('click', () => {
+            const staffId = document.getElementById('editStaffId').value;
+            const name = document.getElementById('editStaffName').value.trim();
+            const username = document.getElementById('editStaffUsername').value.trim();
+            const email = document.getElementById('editStaffEmail').value.trim();
+            const password = document.getElementById('editStaffPassword').value;
+
+            if (!name || !username || !email) {
+                return alert('Please fill in Name, Username, and Email.');
+            }
+
+            socket.emit('updateStaff', {
+                staffId,
+                staffData: { name, username, email, password }
+            });
+            closeEditStaffModal();
+        });
+
+        // --- Event Delegation for list actions ---
+        document.body.addEventListener('click', (e) => {
+            const action = e.target.getAttribute('data-action');
+            const id = e.target.getAttribute('data-id');
+            const routeItem = e.target.closest('.list-item');
+
+            if (routeItem) {
+                displayRouteDetails(routeItem.dataset.id);
+                return;
+            }
+
+            if (action === 'edit-staff') {
+                const staffMember = ALL_DATA.staff.find(s => s._id === id);
+                if (staffMember) {
+                    document.getElementById('editStaffId').value = staffMember._id;
+                    document.getElementById('editStaffName').value = staffMember.name;
+                    document.getElementById('editStaffUsername').value = staffMember.username;
+                    document.getElementById('editStaffEmail').value = staffMember.email;
+                    document.getElementById('editStaffPassword').value = '';
+                    document.getElementById('edit-staff-modal').classList.add('active');
+                }
+                return;
+            }
+
+            if (!action || !id) return;
+            const isDeleteAction = action.startsWith('delete-');
+            if (isDeleteAction && !confirm('Are you sure you want to delete this item?')) return;
+
+            if (action === 'delete-staff') socket.emit('deleteStaff', id);
+            if (action === 'delete-bus') socket.emit('deleteBus', id);
+            if (action === 'delete-route') socket.emit('deleteRoute', id);
+        });
+
+        document.body.addEventListener('change', (e) => {
+            const action = e.target.getAttribute('data-action');
+            const busId = e.target.getAttribute('data-id');
+            if (!action || !busId) return;
+
+            if (action === 'assign-staff') socket.emit('assignStaffToBus', { busId, staffId: e.target.value || null });
+            if (action === 'assign-route') socket.emit('assignRouteToBus', { busId, routeId: e.target.value || null });
+        });
+
+        // --- Initialize default view ---
+        document.querySelector('.nav-link[data-target="overview-panel"]').click();
+
+    </script>
+</body>
+
+</html>

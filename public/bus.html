@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Staff Dashboard</title>
+    <link rel="icon" type="image/png" href="/images/favicon.png">
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
@@ -50,8 +51,10 @@
         <div id="live-coords"></div>
         <div id="map-container"><div id="map"></div></div>
     </div>
+    <div id="footer-placeholder"></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="/map-boundary.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const welcomeMessage = document.getElementById('welcome-message');
@@ -64,7 +67,7 @@
         async function initializeDashboard() {
             const token = localStorage.getItem('authToken');
             if (!token) {
-                window.location.href = '/login.html';
+                window.location.href = '/';
                 return;
             }
 
@@ -101,7 +104,7 @@
                 }
             } catch (error) {
                 localStorage.removeItem('authToken');
-                window.location.href = '/login.html';
+                window.location.href = '/';
             }
         }
 
@@ -138,6 +141,9 @@
                 if (!map) {
                     map = L.map('map').setView(currentLatLng, 16);
                     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+                    if (window.addIndiaBoundary) {
+                        window.addIndiaBoundary(map);
+                    }
                     busMarker = L.marker(currentLatLng).addTo(map).bindPopup(`<b>Bus ${busId}</b>`).openPopup();
                 } else {
                     busMarker.setLatLng(currentLatLng);
@@ -151,10 +157,14 @@
 
         logoutBtn.addEventListener('click', () => {
             localStorage.removeItem('authToken');
-            window.location.href = '/login.html';
+            window.location.href = '/';
         });
 
         initializeDashboard();
+    </script>
+    <script type="module">
+        import { loadFooter } from '/footer.js';
+        loadFooter('footer-placeholder');
     </script>
 </body>
 </html>
