@@ -2,13 +2,10 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-// Import necessary models from the models.js file
 const { Staff, Bus } = require('../models');
 
-// Import our authentication middleware
 const verifyToken = require('../middleware/auth');
 
-// Create a new router instance
 const router = express.Router();
 
 /**
@@ -23,11 +20,9 @@ router.post('/login', async (req, res) => {
         // 1. Find the staff member by their unique username
         const staff = await Staff.findOne({ username });
         if (!staff) {
-            // Use a generic message to prevent revealing which field was incorrect
             return res.status(401).json({ message: 'Invalid username or password.' });
         }
 
-        // 2. Compare the provided password with the hashed password in the database
         const isMatch = await bcrypt.compare(password, staff.password);
         if (!isMatch) {
             return res.status(401).json({ message: 'Invalid username or password.' });
@@ -35,16 +30,16 @@ router.post('/login', async (req, res) => {
 
         // 3. If credentials are correct, create a JWT payload
         const payload = {
-            id: staff._id,      // User's unique MongoDB ID
+            id: staff._id,
             name: staff.name,
-            role: 'staff'       // IMPORTANT: Define the role for staff
+            role: 'staff'
         };
 
         // 4. Sign the token with the secret key, setting an expiration time
         const token = jwt.sign(
             payload, 
-            process.env.JWT_SECRET || 'your_default_secret', // Fallback secret for safety
-            { expiresIn: '1d' } // Token is valid for 1 day
+            process.env.JWT_SECRET || 'your_default_secret', 
+            { expiresIn: '1d' }
         );
 
         // 5. Send the successful response with the token

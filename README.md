@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Live Demo](https://img.shields.io/badge/Live_Demo-travelsaathi.vercel.app-2563EB?style=for-the-badge&logo=vercel&logoColor=white)](https://travelsaathi.vercel.app/)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-travelsaathi.vercel.app-2563EB?style=for-the-badge&logo=vercel&logoColor=white)](https://mytravelsaathi.vercel.app/)
 [![Watch Video](https://img.shields.io/badge/Watch_Video-Demo_Tour-E4405F?style=for-the-badge&logo=google-drive&logoColor=white)](https://drive.google.com/file/d/17YNZPYkkkY7wxMgwtxNKTOAddkmbMG0j/view?usp=drive_link)
 
 ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)

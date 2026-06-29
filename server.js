@@ -17,6 +17,7 @@ const { Route, Bus } = require('./models');
 const setupAdminSocketListeners = require('./routes/admin');
 const staffApiRouter = require('./routes/staff');
 const userApiRouter = require('./routes/user'); // This line already exists, which is great.
+const smsApiRouter = require('./routes/sms');
 const { calculateETAs } = require('./utils/etaCalculator');
 
 // --- Server & App Initialization ---
@@ -118,6 +119,21 @@ app.use('/api/staff', staffApiRouter);
 // Handles user (passenger) login
 app.use('/api/user', userApiRouter);
 // --- END OF FIX ---
+
+// SMS location updates — inject io and busLocations via middleware
+app.use('/api/sms', (req, res, next) => {
+    req.io = io;
+    req.busLocations = busLocations;
+    next();
+}, smsApiRouter);
+
+// Lightweight ping for heartbeat checks
+app.get('/api/ping', (req, res) => res.json({ ok: true }));
+
+// Config endpoint for frontend to fetch SMS server number
+app.get('/api/config/sms-number', (req, res) => {
+    res.json({ phoneNumber: process.env.SMS_SERVER_PHONE || '' });
+});
 
 
 // Provides all routes to the passenger frontend
@@ -234,16 +250,41 @@ io.on('connection', (socket) => {
     // Handles ETA requests from a passenger
     socket.on('requestETAs', async ({ routeId, stopName }) => {
         try {
-            const route = await Route.findOne({ id: routeId });
-            if (!route) return;
+            console.log(`[ETA REQUEST] routeId: "${routeId}", stopName: "${stopName}"`);
 
-            // Use robust lookup for the stop name
+            const route = await Route.findOne({ id: routeId });
+            if (!route) {
+                console.log(`[ETA REQUEST] Route NOT found for id: "${routeId}"`);
+                return;
+            }
+
+            // Use robust lookup for the stop name — use .includes() for partial match
             const normalizedStopName = stopName.trim().toLowerCase();
             const passengerStop = route.stops.find(s => s.name.toLowerCase() === normalizedStopName);
-            if (!passengerStop) return;
+            if (!passengerStop) {
+                console.log(`[ETA REQUEST] Stop NOT found: "${stopName}" in route stops: [${route.stops.map(s => s.name).join(', ')}]`);
+                // Fallback: try partial match (user may have typed a substring)
+                const partialMatch = route.stops.find(s => s.name.toLowerCase().includes(normalizedStopName) || normalizedStopName.includes(s.name.toLowerCase()));
+                if (!partialMatch) {
+                    console.log(`[ETA REQUEST] Partial match also failed. Emitting empty ETAs.`);
+                    socket.emit('etasUpdated', []);
+                    return;
+                }
+                console.log(`[ETA REQUEST] Partial match found: "${partialMatch.name}" for input "${stopName}"`);
+                // Use the partial match
+                const busesOnRoute = Object.values(busLocations).filter(bus => bus.routeId === routeId);
+                console.log(`[ETA REQUEST] Buses on route: ${busesOnRoute.length}`);
+                const etas = calculateETAs(route, busesOnRoute, partialMatch);
+                console.log(`[ETA REQUEST] ETAs computed:`, JSON.stringify(etas));
+                socket.emit('etasUpdated', etas);
+                return;
+            }
 
+            console.log(`[ETA REQUEST] Stop found: "${passengerStop.name}"`);
             const busesOnRoute = Object.values(busLocations).filter(bus => bus.routeId === routeId);
+            console.log(`[ETA REQUEST] Buses on route: ${busesOnRoute.length}`);
             const etas = calculateETAs(route, busesOnRoute, passengerStop);
+            console.log(`[ETA REQUEST] ETAs computed:`, JSON.stringify(etas));
             
             // Send the ETAs back ONLY to the passenger who asked for them
             socket.emit('etasUpdated', etas);
