@@ -15,6 +15,8 @@
 
 ---
 
+<i>Note: This project was previously named Lok Yatra. It has been renamed to Travel Saathi as part of a rebranding effort. The project's development history and functionality remain the same.</i>
+
 ## 📖 Overview
 
 **Travel Saathi** (formerly Lok Yatra) is a full-stack, real-time logistics and public transit ecosystem designed to modernize public bus networks in emerging smart cities. The platform bridges the information gap between transit administrators, bus staff (conductors), and commuters by offering live GPS tracking, dynamic ETA predictions, and responsive admin management panels.
